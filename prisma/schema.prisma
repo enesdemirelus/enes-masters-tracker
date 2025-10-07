@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../app/generated/prisma"
@@ -16,14 +10,24 @@ datasource db {
 }
 
 model Schools {
-  id       String @id @default(cuid())
+  id       String   @id @default(cuid())
   name     String
   location String
   tiers    Tiers
+  category Category
 }
 
 enum Tiers {
   SAFETY
   TARGET
   REACH
+  NOT_SURE
+}
+
+enum Category {
+  AROUND_ILLINOIS
+  IN_CHICAGO
+  IN_ILLINOIS
+  IN_CALIFORNIA
+  FAR
 }
