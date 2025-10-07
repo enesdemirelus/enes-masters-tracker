@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const schools = await prisma.schools.findMany({
       orderBy: {
-        name: "asc",
+        tiers: "asc",
       },
     });
     return NextResponse.json(schools);
