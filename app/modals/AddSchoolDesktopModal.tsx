@@ -1,0 +1,204 @@
+import React, { useState } from "react";
+import { Button, Input, Modal, Select } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { IconCheck } from "@tabler/icons-react";
+import axios from "axios";
+
+interface AddSchoolDesktopModalProps {
+  opened: boolean;
+  onClose: () => void;
+  onSchoolAdded?: () => void;
+  isMobile?: boolean;
+}
+
+function AddSchoolDesktopModal({
+  opened,
+  onClose,
+  onSchoolAdded,
+  isMobile,
+}: AddSchoolDesktopModalProps) {
+  const [schoolName, setSchoolName] = useState("");
+  const [schoolLocation, setSchoolLocation] = useState("");
+  const [schoolTier, setSchoolTier] = useState("");
+  const [schoolCategory, setSchoolCategory] = useState("");
+  const [schoolStatus, setSchoolStatus] = useState("");
+  const [isAdded, setIsAdded] = useState(false);
+
+  const handleAddSchool = async () => {
+    await axios.post("/api/add-school", {
+      name: schoolName,
+      location: schoolLocation,
+      tiers: schoolTier,
+      category: schoolCategory,
+      status: schoolStatus,
+    });
+    setIsAdded(true);
+
+    notifications.show({
+      title: "School Added Successfully!",
+      message: `${schoolName} has been added to your tracker.`,
+      color: "teal",
+      icon: <IconCheck size={18} />,
+      autoClose: 4000,
+      styles: {
+        root: {
+          background: "rgba(255, 255, 255, 0.98)",
+          backdropFilter: "blur(10px)",
+          borderLeft: "4px solid #667eea",
+        },
+        title: {
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          fontWeight: 700,
+        },
+        description: {
+          color: "#555",
+        },
+        icon: {
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        },
+      },
+    });
+
+    if (onSchoolAdded) {
+      await onSchoolAdded();
+    }
+
+    onClose();
+  };
+  return (
+    <Modal
+      centered={isMobile}
+      opened={opened}
+      onClose={onClose}
+      title={
+        <span
+          style={{
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            fontWeight: 700,
+            fontSize: "1.25rem",
+          }}
+        >
+          Add a new school
+        </span>
+      }
+      overlayProps={{
+        backgroundOpacity: 0.55,
+        blur: 3,
+      }}
+      styles={{
+        content: {
+          background: "rgba(255, 255, 255, 0.98)",
+          backdropFilter: "blur(10px)",
+        },
+      }}
+      radius="md"
+      size="md"
+    >
+      <div className="flex flex-col gap-4">
+        <Input
+          placeholder="School Name"
+          size="md"
+          radius="md"
+          value={schoolName}
+          onChange={(e) => setSchoolName(e.target.value)}
+          styles={{
+            input: {
+              borderColor: "#e0e0e0",
+              "&:focus": {
+                borderColor: "#667eea",
+              },
+            },
+          }}
+        />
+        <Input
+          placeholder="School Location"
+          size="md"
+          radius="md"
+          value={schoolLocation}
+          onChange={(e) => setSchoolLocation(e.target.value)}
+          styles={{
+            input: {
+              borderColor: "#e0e0e0",
+              "&:focus": {
+                borderColor: "#667eea",
+              },
+            },
+          }}
+        />
+        <Select
+          placeholder="School Tier"
+          data={["SAFETY", "TARGET", "REACH"]}
+          size="md"
+          radius="md"
+          value={schoolTier}
+          onChange={(value) => setSchoolTier(value ?? "SAFETY")}
+          styles={{
+            input: {
+              borderColor: "#e0e0e0",
+              "&:focus": {
+                borderColor: "#667eea",
+              },
+            },
+          }}
+        />
+        <Select
+          placeholder="School Category"
+          data={[
+            "AROUND_ILLINOIS",
+            "IN_CHICAGO",
+            "IN_ILLINOIS",
+            "IN_CALIFORNIA",
+            "FAR",
+          ]}
+          size="md"
+          radius="md"
+          value={schoolCategory}
+          onChange={(value) => setSchoolCategory(value ?? "IN_CHICAGO")}
+          styles={{
+            input: {
+              borderColor: "#e0e0e0",
+              "&:focus": {
+                borderColor: "#667eea",
+              },
+            },
+          }}
+        />
+        <Select
+          placeholder="School Status"
+          data={["APPLYING", "APPLIED", "REJECTED", "ACCEPTED"]}
+          size="md"
+          radius="md"
+          value={schoolStatus}
+          onChange={(value) => setSchoolStatus(value ?? "APPLYING")}
+          styles={{
+            input: {
+              borderColor: "#e0e0e0",
+              "&:focus": {
+                borderColor: "#667eea",
+              },
+            },
+          }}
+        />
+        <Button
+          onClick={handleAddSchool}
+          variant="gradient"
+          gradient={{ from: "#667eea", to: "#764ba2", deg: 135 }}
+          size="md"
+          radius="md"
+          style={{
+            fontWeight: 600,
+            boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+          }}
+        >
+          Add School
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
+export default AddSchoolDesktopModal;

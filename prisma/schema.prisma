@@ -15,6 +15,7 @@ model Schools {
   location String
   tiers    Tiers
   category Category
+  status   Status   @default(APPLYING)
 }
 
 enum Tiers {
@@ -30,4 +31,11 @@ enum Category {
   IN_ILLINOIS
   IN_CALIFORNIA
   FAR
+}
+
+enum Status {
+  APPLYING
+  APPLIED
+  REJECTED
+  ACCEPTED
 }
