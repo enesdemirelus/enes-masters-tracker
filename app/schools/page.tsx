@@ -1,16 +1,29 @@
 "use client";
-import { Table, Badge, ActionIcon, Title, Paper, Button } from "@mantine/core";
-import { IconEdit } from "@tabler/icons-react";
+import {
+  Table,
+  Badge,
+  ActionIcon,
+  Title,
+  Paper,
+  Button,
+  TextInput,
+} from "@mantine/core";
+import { IconEdit, IconSearch } from "@tabler/icons-react";
 import { useState, useEffect } from "react";
 import MobileSchoolsView from "./MobileSchoolsView";
 import { useIsMobile } from "../../lib/use-mobile";
 import AddSchoolDesktopModal from "../modals/AddSchoolDesktopModal";
+import EditSchoolDesktopModal from "../modals/EditSchoolDesktopModal";
 import { useDisclosure } from "@mantine/hooks";
 
 export default function Page() {
   const [elements, setElements] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const isMobile = useIsMobile();
   const [opened, { open, close }] = useDisclosure(false);
+  const [editOpened, { open: openEdit, close: closeEdit }] =
+    useDisclosure(false);
+  const [selectedSchool, setSelectedSchool] = useState<any>(null);
 
   const fetchSchools = async () => {
     const response = await fetch("/api/get-school");
@@ -21,6 +34,17 @@ export default function Page() {
   useEffect(() => {
     fetchSchools();
   }, []);
+
+  const filteredElements = elements.filter((element) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      element.name.toLowerCase().includes(query) ||
+      element.location.toLowerCase().includes(query) ||
+      element.tiers.toLowerCase().includes(query) ||
+      element.category.toLowerCase().includes(query) ||
+      element.status.toLowerCase().includes(query)
+    );
+  });
 
   const getTierColor = (tier: string) => {
     switch (tier) {
@@ -72,7 +96,7 @@ export default function Page() {
   if (isMobile) {
     return (
       <MobileSchoolsView
-        elements={elements}
+        elements={filteredElements}
         getTierColor={getTierColor}
         getCategoryColor={getCategoryColor}
         getStatusColor={getStatusColor}
@@ -81,7 +105,7 @@ export default function Page() {
     );
   }
 
-  const rows = elements.map((element) => (
+  const rows = filteredElements.map((element) => (
     <Table.Tr
       key={element.name}
       style={{
@@ -91,7 +115,16 @@ export default function Page() {
       <Table.Td
         style={{ whiteSpace: "nowrap", textAlign: "center", width: "1px" }}
       >
-        <ActionIcon variant="light" color="indigo" size="md" radius="md">
+        <ActionIcon
+          variant="light"
+          color="teal"
+          size="md"
+          radius="md"
+          onClick={() => {
+            setSelectedSchool(element);
+            openEdit();
+          }}
+        >
           <IconEdit size={18} />
         </ActionIcon>
       </Table.Td>
@@ -144,9 +177,22 @@ export default function Page() {
         onClose={close}
         onSchoolAdded={fetchSchools}
       />
+      {selectedSchool && (
+        <EditSchoolDesktopModal
+          opened={editOpened}
+          onClose={closeEdit}
+          onSchoolEdited={fetchSchools}
+          schoolIdProp={selectedSchool.id}
+          schoolNameProp={selectedSchool.name}
+          schoolLocationProp={selectedSchool.location}
+          schoolTierProp={selectedSchool.tiers}
+          schoolCategoryProp={selectedSchool.category}
+          schoolStatusProp={selectedSchool.status}
+        />
+      )}
       <div
         style={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
           minHeight: "100vh",
           padding: "40px 20px",
         }}
@@ -173,7 +219,7 @@ export default function Page() {
             <Title
               order={1}
               style={{
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 fontSize: "2.5rem",
@@ -182,19 +228,40 @@ export default function Page() {
             >
               Enes' Master's Application Tracker
             </Title>
-            <Button
-              variant="gradient"
-              gradient={{ from: "#667eea", to: "#764ba2", deg: 135 }}
-              size="md"
-              radius="md"
-              style={{
-                fontWeight: 600,
-                boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
-              }}
-              onClick={open}
-            >
-              Add School
-            </Button>
+            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+              <TextInput
+                placeholder="Search schools..."
+                size="md"
+                radius="md"
+                leftSection={<IconSearch size={18} />}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: "300px",
+                }}
+                styles={{
+                  input: {
+                    borderColor: "#e0e0e0",
+                    "&:focus": {
+                      borderColor: "#10b981",
+                    },
+                  },
+                }}
+              />
+              <Button
+                variant="gradient"
+                gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
+                size="md"
+                radius="md"
+                style={{
+                  fontWeight: 600,
+                  boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
+                }}
+                onClick={open}
+              >
+                Add School
+              </Button>
+            </div>
           </div>
           <Table
             highlightOnHover

@@ -12,9 +12,12 @@ import {
 } from "@mantine/core";
 import { IconEdit } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
+import { useState } from "react";
 import AddSchoolDesktopModal from "../modals/AddSchoolDesktopModal";
+import EditSchoolDesktopModal from "../modals/EditSchoolDesktopModal";
 
 interface School {
+  id: string;
   name: string;
   location: string;
   tiers: string;
@@ -38,6 +41,9 @@ export default function MobileSchoolsView({
   onSchoolAdded,
 }: MobileSchoolsViewProps) {
   const [opened, { open, close }] = useDisclosure(false);
+  const [editOpened, { open: openEdit, close: closeEdit }] =
+    useDisclosure(false);
+  const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
   return (
     <>
       <AddSchoolDesktopModal
@@ -46,9 +52,23 @@ export default function MobileSchoolsView({
         onSchoolAdded={onSchoolAdded}
         isMobile={true}
       />
+      {selectedSchool && (
+        <EditSchoolDesktopModal
+          opened={editOpened}
+          onClose={closeEdit}
+          onSchoolEdited={onSchoolAdded}
+          isMobile={true}
+          schoolIdProp={selectedSchool.id}
+          schoolNameProp={selectedSchool.name}
+          schoolLocationProp={selectedSchool.location}
+          schoolTierProp={selectedSchool.tiers}
+          schoolCategoryProp={selectedSchool.category}
+          schoolStatusProp={selectedSchool.status}
+        />
+      )}
       <div
         style={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
           minHeight: "100vh",
           padding: "20px 16px",
           display: "flex",
@@ -79,7 +99,7 @@ export default function MobileSchoolsView({
             <Title
               order={1}
               style={{
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 fontSize: "1.5rem",
@@ -91,13 +111,13 @@ export default function MobileSchoolsView({
             </Title>
             <Button
               variant="gradient"
-              gradient={{ from: "#667eea", to: "#764ba2", deg: 135 }}
+              gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
               size="sm"
               radius="md"
               style={{
                 fontWeight: 600,
                 fontSize: "0.8rem",
-                boxShadow: "0 2px 8px rgba(102, 126, 234, 0.3)",
+                boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)",
                 whiteSpace: "nowrap",
               }}
               onClick={open}
@@ -145,9 +165,14 @@ export default function MobileSchoolsView({
                     </div>
                     <ActionIcon
                       variant="light"
-                      color="indigo"
+                      color="teal"
                       size="lg"
                       radius="md"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedSchool(element);
+                        openEdit();
+                      }}
                     >
                       <IconEdit size={20} />
                     </ActionIcon>

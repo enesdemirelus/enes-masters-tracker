@@ -44,10 +44,10 @@ function AddSchoolDesktopModal({
         root: {
           background: "rgba(255, 255, 255, 0.98)",
           backdropFilter: "blur(10px)",
-          borderLeft: "4px solid #667eea",
+          borderLeft: "4px solid #10b981",
         },
         title: {
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
           fontWeight: 700,
@@ -56,7 +56,7 @@ function AddSchoolDesktopModal({
           color: "#555",
         },
         icon: {
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
         },
       },
     });
@@ -64,6 +64,12 @@ function AddSchoolDesktopModal({
     if (onSchoolAdded) {
       await onSchoolAdded();
     }
+
+    setSchoolName("");
+    setSchoolLocation("");
+    setSchoolTier("");
+    setSchoolCategory("");
+    setSchoolStatus("");
 
     onClose();
   };
@@ -75,7 +81,7 @@ function AddSchoolDesktopModal({
       title={
         <span
           style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             fontWeight: 700,
@@ -109,7 +115,7 @@ function AddSchoolDesktopModal({
             input: {
               borderColor: "#e0e0e0",
               "&:focus": {
-                borderColor: "#667eea",
+                borderColor: "#10b981",
               },
             },
           }}
@@ -124,7 +130,7 @@ function AddSchoolDesktopModal({
             input: {
               borderColor: "#e0e0e0",
               "&:focus": {
-                borderColor: "#667eea",
+                borderColor: "#10b981",
               },
             },
           }}
@@ -140,7 +146,7 @@ function AddSchoolDesktopModal({
             input: {
               borderColor: "#e0e0e0",
               "&:focus": {
-                borderColor: "#667eea",
+                borderColor: "#10b981",
               },
             },
           }}
@@ -162,7 +168,7 @@ function AddSchoolDesktopModal({
             input: {
               borderColor: "#e0e0e0",
               "&:focus": {
-                borderColor: "#667eea",
+                borderColor: "#10b981",
               },
             },
           }}
@@ -178,7 +184,7 @@ function AddSchoolDesktopModal({
             input: {
               borderColor: "#e0e0e0",
               "&:focus": {
-                borderColor: "#667eea",
+                borderColor: "#10b981",
               },
             },
           }}
@@ -186,12 +192,12 @@ function AddSchoolDesktopModal({
         <Button
           onClick={handleAddSchool}
           variant="gradient"
-          gradient={{ from: "#667eea", to: "#764ba2", deg: 135 }}
+          gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
           size="md"
           radius="md"
           style={{
             fontWeight: 600,
-            boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+            boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
           }}
         >
           Add School
