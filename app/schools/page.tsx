@@ -8,7 +8,7 @@ import {
   Button,
   TextInput,
 } from "@mantine/core";
-import { IconEdit, IconSearch } from "@tabler/icons-react";
+import { IconEdit, IconInfoCircle, IconSearch } from "@tabler/icons-react";
 import { useState, useEffect } from "react";
 import MobileSchoolsView from "./MobileSchoolsView";
 import { useIsMobile } from "../../lib/use-mobile";
@@ -42,7 +42,8 @@ export default function Page() {
       element.location.toLowerCase().includes(query) ||
       element.tiers.toLowerCase().includes(query) ||
       element.category.toLowerCase().includes(query) ||
-      element.status.toLowerCase().includes(query)
+      element.status.toLowerCase().includes(query) ||
+      element.ms_status.toLowerCase().includes(query)
     );
   });
 
@@ -93,6 +94,18 @@ export default function Page() {
     }
   };
 
+  const getMsStatusColor = (msStatus: string) => {
+    switch (msStatus) {
+      case "RESEARCH_BASED":
+        return "green";
+      case "PROFESSIONAL_TRACK":
+        return "purple";
+      case "NO_MASTERS":
+        return "gray";
+      default:
+        return "green";
+    }
+  };
   if (isMobile) {
     return (
       <MobileSchoolsView
@@ -100,6 +113,7 @@ export default function Page() {
         getTierColor={getTierColor}
         getCategoryColor={getCategoryColor}
         getStatusColor={getStatusColor}
+        getMsStatusColor={getMsStatusColor}
         onSchoolAdded={fetchSchools}
       />
     );
@@ -167,6 +181,31 @@ export default function Page() {
           {element.status}
         </Badge>
       </Table.Td>
+      <Table.Td>
+        <Badge
+          variant="light"
+          color={getMsStatusColor(element.ms_status)}
+          size="lg"
+          radius="md"
+        >
+          {element.ms_status}
+        </Badge>
+      </Table.Td>
+      <Table.Td
+        style={{ whiteSpace: "nowrap", textAlign: "center", width: "1px" }}
+      >
+        <ActionIcon
+          variant="light"
+          color="orange"
+          size="md"
+          radius="md"
+          onClick={() => {
+            console.log(element);
+          }}
+        >
+          <IconInfoCircle size={18} />
+        </ActionIcon>
+      </Table.Td>
     </Table.Tr>
   ));
 
@@ -188,6 +227,7 @@ export default function Page() {
           schoolTierProp={selectedSchool.tiers}
           schoolCategoryProp={selectedSchool.category}
           schoolStatusProp={selectedSchool.status}
+          schoolMsStatusProp={selectedSchool.ms_status}
         />
       )}
       <div
@@ -281,6 +321,10 @@ export default function Page() {
                 <Table.Th>Location</Table.Th>
                 <Table.Th>Location Category</Table.Th>
                 <Table.Th>Status</Table.Th>
+                <Table.Th>MS Program Type</Table.Th>
+                <Table.Th style={{ whiteSpace: "nowrap", textAlign: "center" }}>
+                  More Info
+                </Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>{rows}</Table.Tbody>

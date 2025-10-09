@@ -3,7 +3,7 @@ import { prisma } from "@/prisma/client";
 
 export async function POST(request: Request) {
   try {
-    const { id, name, location, tiers, category, status } =
+    const { id, name, location, tiers, category, status, ms_status } =
       await request.json();
 
     if (!id) {
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!name || !location || !tiers || !category || !status) {
+    if (!name || !location || !tiers || !category || !status || !ms_status) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
       tiers,
       category,
       status,
+      ms_status,
     };
 
     const school = await prisma.schools.upsert({

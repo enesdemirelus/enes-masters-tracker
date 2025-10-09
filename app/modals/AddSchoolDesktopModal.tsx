@@ -22,6 +22,7 @@ function AddSchoolDesktopModal({
   const [schoolTier, setSchoolTier] = useState("");
   const [schoolCategory, setSchoolCategory] = useState("");
   const [schoolStatus, setSchoolStatus] = useState("");
+  const [schoolMsStatus, setSchoolMsStatus] = useState("");
   const [isAdded, setIsAdded] = useState(false);
 
   const handleAddSchool = async () => {
@@ -31,6 +32,7 @@ function AddSchoolDesktopModal({
       tiers: schoolTier,
       category: schoolCategory,
       status: schoolStatus,
+      ms_status: schoolMsStatus,
     });
     setIsAdded(true);
 
@@ -70,7 +72,7 @@ function AddSchoolDesktopModal({
     setSchoolTier("");
     setSchoolCategory("");
     setSchoolStatus("");
-
+    setSchoolMsStatus("");
     onClose();
   };
   return (
@@ -180,6 +182,22 @@ function AddSchoolDesktopModal({
           radius="md"
           value={schoolStatus}
           onChange={(value) => setSchoolStatus(value ?? "APPLYING")}
+          styles={{
+            input: {
+              borderColor: "#e0e0e0",
+              "&:focus": {
+                borderColor: "#10b981",
+              },
+            },
+          }}
+        />
+        <Select
+          placeholder="School MS Status"
+          data={["RESEARCH_BASED", "PROFESSIONAL_TRACK", "NO_MASTERS"]}
+          size="md"
+          radius="md"
+          value={schoolMsStatus}
+          onChange={(value) => setSchoolMsStatus(value ?? "RESEARCH_BASED")}
           styles={{
             input: {
               borderColor: "#e0e0e0",

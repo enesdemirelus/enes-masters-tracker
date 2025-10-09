@@ -10,7 +10,7 @@ import {
   Text,
   Button,
 } from "@mantine/core";
-import { IconEdit } from "@tabler/icons-react";
+import { IconEdit, IconInfoCircle } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import AddSchoolDesktopModal from "../modals/AddSchoolDesktopModal";
@@ -23,6 +23,7 @@ interface School {
   tiers: string;
   category: string;
   status: string;
+  ms_status: string;
 }
 
 interface MobileSchoolsViewProps {
@@ -30,6 +31,7 @@ interface MobileSchoolsViewProps {
   getTierColor: (tier: string) => string;
   getCategoryColor: (category: string) => string;
   getStatusColor: (status: string) => string;
+  getMsStatusColor: (ms_status: string) => string;
   onSchoolAdded?: () => void;
 }
 
@@ -38,6 +40,7 @@ export default function MobileSchoolsView({
   getTierColor,
   getCategoryColor,
   getStatusColor,
+  getMsStatusColor,
   onSchoolAdded,
 }: MobileSchoolsViewProps) {
   const [opened, { open, close }] = useDisclosure(false);
@@ -64,6 +67,7 @@ export default function MobileSchoolsView({
           schoolTierProp={selectedSchool.tiers}
           schoolCategoryProp={selectedSchool.category}
           schoolStatusProp={selectedSchool.status}
+          schoolMsStatusProp={selectedSchool.ms_status}
         />
       )}
       <div
@@ -163,19 +167,33 @@ export default function MobileSchoolsView({
                         {element.location}
                       </Text>
                     </div>
-                    <ActionIcon
-                      variant="light"
-                      color="teal"
-                      size="lg"
-                      radius="md"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedSchool(element);
-                        openEdit();
-                      }}
-                    >
-                      <IconEdit size={20} />
-                    </ActionIcon>
+                    <Group gap="xs">
+                      <ActionIcon
+                        variant="light"
+                        color="teal"
+                        size="lg"
+                        radius="md"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedSchool(element);
+                          openEdit();
+                        }}
+                      >
+                        <IconEdit size={20} />
+                      </ActionIcon>
+                      <ActionIcon
+                        variant="light"
+                        color="orange"
+                        size="lg"
+                        radius="md"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          console.log(element);
+                        }}
+                      >
+                        <IconInfoCircle size={20} />
+                      </ActionIcon>
+                    </Group>
                   </Group>
 
                   <Group gap="xs">
@@ -186,7 +204,7 @@ export default function MobileSchoolsView({
                         to: getTierColor(element.tiers),
                         deg: 90,
                       }}
-                      size="md"
+                      size="xs"
                       radius="md"
                     >
                       {element.tiers}
@@ -194,7 +212,7 @@ export default function MobileSchoolsView({
                     <Badge
                       variant="light"
                       color={getCategoryColor(element.category)}
-                      size="md"
+                      size="xs"
                       radius="md"
                     >
                       {element.category.replace(/_/g, " ")}
@@ -202,10 +220,18 @@ export default function MobileSchoolsView({
                     <Badge
                       variant="light"
                       color={getStatusColor(element.status)}
-                      size="md"
+                      size="xs"
                       radius="md"
                     >
                       {element.status}
+                    </Badge>
+                    <Badge
+                      variant="light"
+                      color={getMsStatusColor(element.ms_status)}
+                      size="xs"
+                      radius="md"
+                    >
+                      {element.ms_status}
                     </Badge>
                   </Group>
                 </Stack>

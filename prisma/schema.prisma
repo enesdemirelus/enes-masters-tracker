@@ -9,13 +9,25 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model Password {
+  id       String @id @default(cuid())
+  password String @unique
+}
+
 model Schools {
-  id       String   @id @default(cuid())
-  name     String
-  location String
-  tiers    Tiers
-  category Category
-  status   Status   @default(APPLYING)
+  id        String   @id @default(cuid())
+  name      String
+  location  String
+  tiers     Tiers
+  category  Category
+  status    Status   @default(APPLYING)
+  ms_status MsStatus @default(RESEARCH_BASED)
+}
+
+enum MsStatus {
+  RESEARCH_BASED
+  PROFESSIONAL_TRACK
+  NO_MASTERS
 }
 
 enum Tiers {

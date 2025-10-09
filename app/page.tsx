@@ -1,103 +1,181 @@
-import Image from "next/image";
+"use client";
+import { Button, Modal, Text, TextInput, Paper, Title } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
+import { useState } from "react";
+import { IconLock } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [opened, { open, close }] = useDisclosure(false);
+  const [password, setPassword] = useState("");
+  const router = useRouter();
+  const handleLogin = () => {
+    router.push("/schools");
+  };
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  return (
+    <>
+      <Modal
+        opened={opened}
+        onClose={close}
+        title={
+          <span
+            style={{
+              background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              fontWeight: 700,
+              fontSize: "1.25rem",
+            }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            That is PRIVATE!
+          </span>
+        }
+        centered
+        overlayProps={{
+          backgroundOpacity: 0.55,
+          blur: 3,
+        }}
+        styles={{
+          content: {
+            background: "rgba(255, 255, 255, 0.98)",
+            backdropFilter: "blur(10px)",
+          },
+        }}
+        radius="md"
+        size="md"
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <Text style={{ color: "#555", fontSize: "1rem" }}>
+            Please enter the password to access the tracker.
+          </Text>
+          <TextInput
+            placeholder="Password"
+            type="password"
+            size="md"
+            radius="md"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            leftSection={<IconLock size={18} />}
+            styles={{
+              input: {
+                borderColor: "#e0e0e0",
+                "&:focus": {
+                  borderColor: "#10b981",
+                },
+              },
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleLogin();
+              }
+            }}
+          />
+          <Button
+            onClick={handleLogin}
+            variant="gradient"
+            gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
+            size="md"
+            radius="md"
+            style={{
+              fontWeight: 600,
+              boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
+            }}
           >
-            Read our docs
-          </a>
+            Login
+          </Button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      </Modal>
+      <div
+        style={{
+          background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "20px",
+        }}
+      >
+        <Paper
+          shadow="xl"
+          radius="lg"
+          style={{
+            maxWidth: "600px",
+            width: "100%",
+            padding: "60px 40px",
+            background: "rgba(255, 255, 255, 0.95)",
+            backdropFilter: "blur(10px)",
+            textAlign: "center",
+          }}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          <Title
+            order={1}
+            style={{
+              background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              fontSize: "2.5rem",
+              fontWeight: 800,
+              marginBottom: "16px",
+            }}
+          >
+            Welcome to the Enes Masters Tracker
+          </Title>
+          <Text
+            style={{
+              color: "#555",
+              fontSize: "1.125rem",
+              marginBottom: "40px",
+              lineHeight: "1.6",
+            }}
+          >
+            Please select the action you want to perform
+          </Text>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+              maxWidth: "400px",
+              margin: "0 auto",
+            }}
+          >
+            <Button
+              onClick={open}
+              variant="gradient"
+              gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
+              size="lg"
+              radius="md"
+              leftSection={<IconLock size={20} />}
+              style={{
+                fontWeight: 600,
+                boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
+              }}
+            >
+              Open Enes's Master's Tracker
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              radius="md"
+              style={{
+                fontWeight: 600,
+                borderColor: "#10b981",
+                color: "#10b981",
+              }}
+              styles={{
+                root: {
+                  "&:hover": {
+                    backgroundColor: "rgba(16, 185, 129, 0.1)",
+                  },
+                },
+              }}
+            >
+              Open Demo Master's Tracker
+            </Button>
+          </div>
+        </Paper>
+      </div>
+    </>
   );
 }

@@ -16,6 +16,7 @@ interface EditSchoolDesktopModalProps {
   schoolTierProp: string;
   schoolCategoryProp: string;
   schoolStatusProp: string;
+  schoolMsStatusProp: string;
 }
 
 function EditSchoolDesktopModal({
@@ -29,12 +30,14 @@ function EditSchoolDesktopModal({
   schoolTierProp,
   schoolCategoryProp,
   schoolStatusProp,
+  schoolMsStatusProp,
 }: EditSchoolDesktopModalProps) {
   const [schoolName, setSchoolName] = useState(schoolNameProp);
   const [schoolLocation, setSchoolLocation] = useState(schoolLocationProp);
   const [schoolTier, setSchoolTier] = useState(schoolTierProp);
   const [schoolCategory, setSchoolCategory] = useState(schoolCategoryProp);
   const [schoolStatus, setSchoolStatus] = useState(schoolStatusProp);
+  const [schoolMsStatus, setSchoolMsStatus] = useState(schoolMsStatusProp);
   const [isEdited, setIsEdited] = useState(false);
 
   const [
@@ -47,6 +50,7 @@ function EditSchoolDesktopModal({
     setSchoolTier(schoolTierProp);
     setSchoolCategory(schoolCategoryProp);
     setSchoolStatus(schoolStatusProp);
+    setSchoolMsStatus(schoolMsStatusProp);
   }, [
     schoolIdProp,
     schoolNameProp,
@@ -54,6 +58,7 @@ function EditSchoolDesktopModal({
     schoolTierProp,
     schoolCategoryProp,
     schoolStatusProp,
+    schoolMsStatusProp,
   ]);
 
   const handleEditSchool = async () => {
@@ -64,6 +69,7 @@ function EditSchoolDesktopModal({
       tiers: schoolTier,
       category: schoolCategory,
       status: schoolStatus,
+      ms_status: schoolMsStatus,
     });
     setIsEdited(true);
 
@@ -249,6 +255,22 @@ function EditSchoolDesktopModal({
             radius="md"
             value={schoolStatus}
             onChange={(value) => setSchoolStatus(value ?? "APPLYING")}
+            styles={{
+              input: {
+                borderColor: "#e0e0e0",
+                "&:focus": {
+                  borderColor: "#10b981",
+                },
+              },
+            }}
+          />
+          <Select
+            placeholder="School MS Status"
+            data={["RESEARCH_BASED", "PROFESSIONAL_TRACK", "NO_MASTERS"]}
+            size="md"
+            radius="md"
+            value={schoolMsStatus}
+            onChange={(value) => setSchoolMsStatus(value ?? "RESEARCH_BASED")}
             styles={{
               input: {
                 borderColor: "#e0e0e0",
