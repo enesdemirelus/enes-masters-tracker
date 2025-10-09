@@ -62,7 +62,7 @@ function EditSchoolDesktopModal({
   ]);
 
   const handleEditSchool = async () => {
-    await axios.post("/api/edit-school", {
+    await axios.post("/masters/api/edit-school", {
       id: schoolIdProp,
       name: schoolName,
       location: schoolLocation,
@@ -108,7 +108,7 @@ function EditSchoolDesktopModal({
   };
 
   const handleDeleteSchool = async () => {
-    await axios.post("/api/delete-school", {
+    await axios.post("/masters/api/delete-school", {
       id: schoolIdProp,
     });
 

@@ -26,7 +26,7 @@ function AddSchoolDesktopModal({
   const [isAdded, setIsAdded] = useState(false);
 
   const handleAddSchool = async () => {
-    await axios.post("/api/add-school", {
+    await axios.post("/masters/api/add-school", {
       name: schoolName,
       location: schoolLocation,
       tiers: schoolTier,

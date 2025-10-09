@@ -26,7 +26,7 @@ export default function Page() {
   const [selectedSchool, setSelectedSchool] = useState<any>(null);
 
   const fetchSchools = async () => {
-    const response = await fetch("/api/get-school");
+    const response = await fetch("/masters/api/get-school");
     const data = await response.json();
     setElements(data);
   };
