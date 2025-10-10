@@ -19,6 +19,13 @@ interface EditSchoolDesktopModalProps {
   schoolMsStatusProp: string;
 }
 
+function convertToDisplayFormat(value: string): string {
+  return value
+    .split("_")
+    .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function EditSchoolDesktopModal({
   opened,
   onClose,
@@ -34,10 +41,18 @@ function EditSchoolDesktopModal({
 }: EditSchoolDesktopModalProps) {
   const [schoolName, setSchoolName] = useState(schoolNameProp);
   const [schoolLocation, setSchoolLocation] = useState(schoolLocationProp);
-  const [schoolTier, setSchoolTier] = useState(schoolTierProp);
-  const [schoolCategory, setSchoolCategory] = useState(schoolCategoryProp);
-  const [schoolStatus, setSchoolStatus] = useState(schoolStatusProp);
-  const [schoolMsStatus, setSchoolMsStatus] = useState(schoolMsStatusProp);
+  const [schoolTier, setSchoolTier] = useState(
+    convertToDisplayFormat(schoolTierProp)
+  );
+  const [schoolCategory, setSchoolCategory] = useState(
+    convertToDisplayFormat(schoolCategoryProp)
+  );
+  const [schoolStatus, setSchoolStatus] = useState(
+    convertToDisplayFormat(schoolStatusProp)
+  );
+  const [schoolMsStatus, setSchoolMsStatus] = useState(
+    convertToDisplayFormat(schoolMsStatusProp)
+  );
   const [isEdited, setIsEdited] = useState(false);
 
   const [
@@ -47,10 +62,10 @@ function EditSchoolDesktopModal({
   useEffect(() => {
     setSchoolName(schoolNameProp);
     setSchoolLocation(schoolLocationProp);
-    setSchoolTier(schoolTierProp);
-    setSchoolCategory(schoolCategoryProp);
-    setSchoolStatus(schoolStatusProp);
-    setSchoolMsStatus(schoolMsStatusProp);
+    setSchoolTier(convertToDisplayFormat(schoolTierProp));
+    setSchoolCategory(convertToDisplayFormat(schoolCategoryProp));
+    setSchoolStatus(convertToDisplayFormat(schoolStatusProp));
+    setSchoolMsStatus(convertToDisplayFormat(schoolMsStatusProp));
   }, [
     schoolIdProp,
     schoolNameProp,
@@ -210,13 +225,14 @@ function EditSchoolDesktopModal({
               },
             }}
           />
+
           <Select
             placeholder="School Tier"
-            data={["SAFETY", "TARGET", "REACH"]}
+            data={["Safety", "Target", "Reach"]}
             size="md"
             radius="md"
             value={schoolTier}
-            onChange={(value) => setSchoolTier(value ?? "SAFETY")}
+            onChange={(value) => setSchoolTier(value ?? "Safety")}
             styles={{
               input: {
                 borderColor: "#e0e0e0",
@@ -229,16 +245,16 @@ function EditSchoolDesktopModal({
           <Select
             placeholder="School Category"
             data={[
-              "AROUND_ILLINOIS",
-              "IN_CHICAGO",
-              "IN_ILLINOIS",
-              "IN_CALIFORNIA",
-              "FAR",
+              "Around Illinois",
+              "In Chicago",
+              "In Illinois",
+              "In California",
+              "Far",
             ]}
             size="md"
             radius="md"
             value={schoolCategory}
-            onChange={(value) => setSchoolCategory(value ?? "IN_CHICAGO")}
+            onChange={(value) => setSchoolCategory(value ?? "In Chicago")}
             styles={{
               input: {
                 borderColor: "#e0e0e0",
@@ -250,11 +266,11 @@ function EditSchoolDesktopModal({
           />
           <Select
             placeholder="School Status"
-            data={["APPLYING", "APPLIED", "REJECTED", "ACCEPTED"]}
+            data={["Applying", "Applied", "Rejected", "Accepted"]}
             size="md"
             radius="md"
             value={schoolStatus}
-            onChange={(value) => setSchoolStatus(value ?? "APPLYING")}
+            onChange={(value) => setSchoolStatus(value ?? "Applying")}
             styles={{
               input: {
                 borderColor: "#e0e0e0",
@@ -266,11 +282,11 @@ function EditSchoolDesktopModal({
           />
           <Select
             placeholder="School MS Status"
-            data={["RESEARCH_BASED", "PROFESSIONAL_TRACK", "NO_MASTERS"]}
+            data={["Research Based", "Professional Track", "No Masters"]}
             size="md"
             radius="md"
             value={schoolMsStatus}
-            onChange={(value) => setSchoolMsStatus(value ?? "RESEARCH_BASED")}
+            onChange={(value) => setSchoolMsStatus(value ?? "Research Based")}
             styles={{
               input: {
                 borderColor: "#e0e0e0",
@@ -280,6 +296,7 @@ function EditSchoolDesktopModal({
               },
             }}
           />
+
           <Button
             onClick={handleEditSchool}
             variant="gradient"

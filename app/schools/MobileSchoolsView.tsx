@@ -15,6 +15,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import AddSchoolDesktopModal from "../modals/AddSchoolDesktopModal";
 import EditSchoolDesktopModal from "../modals/EditSchoolDesktopModal";
+import MoreInfoModalMobile from "../modals/MoreInfoModalMobile";
 
 interface School {
   id: string;
@@ -24,6 +25,7 @@ interface School {
   category: string;
   status: string;
   ms_status: string;
+  logo: string;
 }
 
 interface MobileSchoolsViewProps {
@@ -47,8 +49,16 @@ export default function MobileSchoolsView({
   const [editOpened, { open: openEdit, close: closeEdit }] =
     useDisclosure(false);
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
+  const [moreInfoOpened, { open: openMoreInfo, close: closeMoreInfo }] =
+    useDisclosure(false);
   return (
     <>
+      <MoreInfoModalMobile
+        opened={moreInfoOpened}
+        onClose={closeMoreInfo}
+        schoolName={selectedSchool?.name || ""}
+        schoolLogo={selectedSchool?.logo || ""}
+      />
       <AddSchoolDesktopModal
         opened={opened}
         onClose={close}
@@ -188,7 +198,8 @@ export default function MobileSchoolsView({
                         radius="md"
                         onClick={(e) => {
                           e.stopPropagation();
-                          console.log(element);
+                          setSelectedSchool(element);
+                          openMoreInfo();
                         }}
                       >
                         <IconInfoCircle size={20} />

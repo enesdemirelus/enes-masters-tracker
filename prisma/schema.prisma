@@ -16,6 +16,7 @@ model Password {
 
 model Schools {
   id        String   @id @default(cuid())
+  logo      String   @default("")
   name      String
   location  String
   tiers     Tiers

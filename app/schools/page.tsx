@@ -15,6 +15,7 @@ import { useIsMobile } from "../../lib/use-mobile";
 import AddSchoolDesktopModal from "../modals/AddSchoolDesktopModal";
 import EditSchoolDesktopModal from "../modals/EditSchoolDesktopModal";
 import { useDisclosure } from "@mantine/hooks";
+import MoreInfoModal from "../modals/MoreInfoModal";
 
 export default function Page() {
   const [elements, setElements] = useState<any[]>([]);
@@ -24,6 +25,8 @@ export default function Page() {
   const [editOpened, { open: openEdit, close: closeEdit }] =
     useDisclosure(false);
   const [selectedSchool, setSelectedSchool] = useState<any>(null);
+  const [moreInfoOpened, { open: openMoreInfo, close: closeMoreInfo }] =
+    useDisclosure(false);
 
   const fetchSchools = async () => {
     const response = await fetch("/masters/api/get-school");
@@ -200,7 +203,8 @@ export default function Page() {
           size="md"
           radius="md"
           onClick={() => {
-            console.log(element);
+            setSelectedSchool(element);
+            openMoreInfo();
           }}
         >
           <IconInfoCircle size={18} />
@@ -211,6 +215,12 @@ export default function Page() {
 
   return (
     <>
+      <MoreInfoModal
+        opened={moreInfoOpened}
+        onClose={closeMoreInfo}
+        schoolName={selectedSchool?.name}
+        schoolLogo={selectedSchool?.logo}
+      />
       <AddSchoolDesktopModal
         opened={opened}
         onClose={close}
