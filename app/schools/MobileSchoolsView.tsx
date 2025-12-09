@@ -26,10 +26,13 @@ interface School {
   status: string;
   ms_status: string;
   logo: string;
+  removed?: boolean;
+  removal_reason?: string;
 }
 
 interface MobileSchoolsViewProps {
-  elements: School[];
+  activeSchools: School[];
+  removedSchools: School[];
   getTierColor: (tier: string) => string;
   getCategoryColor: (category: string) => string;
   getStatusColor: (status: string) => string;
@@ -38,7 +41,8 @@ interface MobileSchoolsViewProps {
 }
 
 export default function MobileSchoolsView({
-  elements,
+  activeSchools,
+  removedSchools,
   getTierColor,
   getCategoryColor,
   getStatusColor,
@@ -51,6 +55,135 @@ export default function MobileSchoolsView({
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
   const [moreInfoOpened, { open: openMoreInfo, close: closeMoreInfo }] =
     useDisclosure(false);
+
+  const createSchoolCard = (element: School, isRemoved: boolean = false) => (
+    <Card
+      key={element.name}
+      shadow="sm"
+      padding="lg"
+      radius="md"
+      withBorder
+      style={{
+        background: isRemoved ? "#f8f9fa" : "white",
+        opacity: isRemoved ? 0.7 : 1,
+        transition: "transform 0.2s ease, box-shadow 0.2s ease",
+        cursor: "pointer",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "";
+      }}
+    >
+      <Stack gap="sm">
+        <Group justify="space-between" align="flex-start">
+          <div style={{ flex: 1 }}>
+            <Text
+              fw={700}
+              size="lg"
+              style={{
+                color: isRemoved ? "#888" : "#1a1a1a",
+                marginBottom: "4px",
+              }}
+            >
+              {element.name}
+            </Text>
+            <Text size="sm" c="dimmed">
+              {element.location}
+            </Text>
+          </div>
+          <Group gap="xs">
+            <ActionIcon
+              variant="light"
+              color="teal"
+              size="lg"
+              radius="md"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedSchool(element);
+                openEdit();
+              }}
+            >
+              <IconEdit size={20} />
+            </ActionIcon>
+            <ActionIcon
+              variant="light"
+              color="orange"
+              size="lg"
+              radius="md"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedSchool(element);
+                openMoreInfo();
+              }}
+            >
+              <IconInfoCircle size={20} />
+            </ActionIcon>
+          </Group>
+        </Group>
+
+        <Group gap="xs">
+          {isRemoved && element.removal_reason && (
+            <Badge
+              variant="light"
+              color="gray"
+              size="xs"
+              radius="md"
+              style={{ opacity: 0.7 }}
+            >
+              {element.removal_reason}
+            </Badge>
+          )}
+          <Badge
+            variant="gradient"
+            gradient={{
+              from: getTierColor(element.tiers),
+              to: getTierColor(element.tiers),
+              deg: 90,
+            }}
+            size="xs"
+            radius="md"
+            style={{ opacity: isRemoved ? 0.7 : 1 }}
+          >
+            {element.tiers}
+          </Badge>
+          {!isRemoved && (
+            <Badge
+              variant="light"
+              color={getCategoryColor(element.category)}
+              size="xs"
+              radius="md"
+            >
+              {element.category.replace(/_/g, " ")}
+            </Badge>
+          )}
+          {!isRemoved && (
+            <Badge
+              variant="light"
+              color={getStatusColor(element.status)}
+              size="xs"
+              radius="md"
+            >
+              {element.status}
+            </Badge>
+          )}
+          <Badge
+            variant="light"
+            color={getMsStatusColor(element.ms_status)}
+            size="xs"
+            radius="md"
+            style={{ opacity: isRemoved ? 0.7 : 1 }}
+          >
+            {element.ms_status}
+          </Badge>
+        </Group>
+      </Stack>
+    </Card>
+  );
+
   return (
     <>
       <MoreInfoModalMobile
@@ -78,6 +211,7 @@ export default function MobileSchoolsView({
           schoolCategoryProp={selectedSchool.category}
           schoolStatusProp={selectedSchool.status}
           schoolMsStatusProp={selectedSchool.ms_status}
+          schoolRemovedProp={selectedSchool.removed}
         />
       )}
       <div
@@ -141,113 +275,32 @@ export default function MobileSchoolsView({
           </div>
 
           <Stack gap="md">
-            {elements.map((element) => (
-              <Card
-                key={element.name}
-                shadow="sm"
-                padding="lg"
-                radius="md"
-                withBorder
+            {/* Active Schools */}
+            {activeSchools.map((element) => createSchoolCard(element, false))}
+
+            {/* Separator for Removed Schools */}
+            {removedSchools.length > 0 && (
+              <div
                 style={{
-                  background: "white",
-                  transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                  cursor: "pointer",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.boxShadow =
-                    "0 4px 12px rgba(0,0,0,0.1)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "";
+                  backgroundColor: "#e9ecef",
+                  borderTop: "2px solid #dee2e6",
+                  borderBottom: "2px solid #dee2e6",
+                  textAlign: "center",
+                  padding: "16px 12px",
+                  fontWeight: 600,
+                  color: "#6c757d",
+                  fontSize: "0.85rem",
+                  borderRadius: "8px",
+                  margin: "12px 0",
+                  letterSpacing: "0.5px",
                 }}
               >
-                <Stack gap="sm">
-                  <Group justify="space-between" align="flex-start">
-                    <div style={{ flex: 1 }}>
-                      <Text
-                        fw={700}
-                        size="lg"
-                        style={{ color: "#1a1a1a", marginBottom: "4px" }}
-                      >
-                        {element.name}
-                      </Text>
-                      <Text size="sm" c="dimmed">
-                        {element.location}
-                      </Text>
-                    </div>
-                    <Group gap="xs">
-                      <ActionIcon
-                        variant="light"
-                        color="teal"
-                        size="lg"
-                        radius="md"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedSchool(element);
-                          openEdit();
-                        }}
-                      >
-                        <IconEdit size={20} />
-                      </ActionIcon>
-                      <ActionIcon
-                        variant="light"
-                        color="orange"
-                        size="lg"
-                        radius="md"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedSchool(element);
-                          openMoreInfo();
-                        }}
-                      >
-                        <IconInfoCircle size={20} />
-                      </ActionIcon>
-                    </Group>
-                  </Group>
+                Removed Schools
+              </div>
+            )}
 
-                  <Group gap="xs">
-                    <Badge
-                      variant="gradient"
-                      gradient={{
-                        from: getTierColor(element.tiers),
-                        to: getTierColor(element.tiers),
-                        deg: 90,
-                      }}
-                      size="xs"
-                      radius="md"
-                    >
-                      {element.tiers}
-                    </Badge>
-                    <Badge
-                      variant="light"
-                      color={getCategoryColor(element.category)}
-                      size="xs"
-                      radius="md"
-                    >
-                      {element.category.replace(/_/g, " ")}
-                    </Badge>
-                    <Badge
-                      variant="light"
-                      color={getStatusColor(element.status)}
-                      size="xs"
-                      radius="md"
-                    >
-                      {element.status}
-                    </Badge>
-                    <Badge
-                      variant="light"
-                      color={getMsStatusColor(element.ms_status)}
-                      size="xs"
-                      radius="md"
-                    >
-                      {element.ms_status}
-                    </Badge>
-                  </Group>
-                </Stack>
-              </Card>
-            ))}
+            {/* Removed Schools */}
+            {removedSchools.map((element) => createSchoolCard(element, true))}
           </Stack>
         </Paper>
       </div>

@@ -3,8 +3,7 @@ import { prisma } from "@/prisma/client";
 
 export async function POST(request: Request) {
   try {
-    const { id } =
-      await request.json();
+    const { id } = await request.json();
 
     if (!id) {
       return NextResponse.json(
@@ -13,13 +12,11 @@ export async function POST(request: Request) {
       );
     }
 
- 
-
-    const school = await prisma.schools.delete({
-      where: { id },
+    const deletedSchool = await prisma.schools.delete({
+      where: { id }
     });
 
-    return NextResponse.json(school);
+    return NextResponse.json(deletedSchool);
   } catch (error) {
     console.error("Error deleting school:", error);
     return NextResponse.json(

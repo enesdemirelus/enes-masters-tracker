@@ -50,6 +50,10 @@ export default function Page() {
     );
   });
 
+  // Separate active and removed schools
+  const activeSchools = filteredElements.filter((element) => !element.removed);
+  const removedSchools = filteredElements.filter((element) => element.removed);
+
   const getTierColor = (tier: string) => {
     switch (tier) {
       case "SAFETY":
@@ -92,6 +96,8 @@ export default function Page() {
         return "red";
       case "ACCEPTED":
         return "green";
+      case "REMOVED":
+        return "black";
       default:
         return "blue";
     }
@@ -112,7 +118,8 @@ export default function Page() {
   if (isMobile) {
     return (
       <MobileSchoolsView
-        elements={filteredElements}
+        activeSchools={activeSchools}
+        removedSchools={removedSchools}
         getTierColor={getTierColor}
         getCategoryColor={getCategoryColor}
         getStatusColor={getStatusColor}
@@ -122,16 +129,16 @@ export default function Page() {
     );
   }
 
-  const rows = filteredElements.map((element) => (
+  const createSchoolRow = (element: any, isRemoved: boolean = false) => (
     <Table.Tr
       key={element.name}
       style={{
         transition: "background-color 0.2s ease",
+        opacity: isRemoved ? 0.6 : 1,
+        backgroundColor: isRemoved ? "#f8f9fa" : undefined,
       }}
     >
-      <Table.Td
-        style={{ whiteSpace: "nowrap", textAlign: "center", width: "1px" }}
-      >
+      <Table.Td>
         <ActionIcon
           variant="light"
           color="teal"
@@ -155,21 +162,33 @@ export default function Page() {
           }}
           size="lg"
           radius="md"
+          style={{ opacity: isRemoved ? 0.7 : 1 }}
         >
           {element.tiers}
         </Badge>
       </Table.Td>
-      <Table.Td style={{ fontWeight: 600, color: "#1a1a1a" }}>
+      <Table.Td
+        style={{ fontWeight: 600, color: isRemoved ? "#888" : "#1a1a1a" }}
+      >
         {element.name}
+        {isRemoved && element.removal_reason && (
+          <span
+            style={{ fontSize: "0.75rem", color: "#999", marginLeft: "8px" }}
+          >
+            ({element.removal_reason})
+          </span>
+        )}
       </Table.Td>
-      <Table.Td style={{ color: "#555" }}>{element.location}</Table.Td>
+      <Table.Td style={{ color: isRemoved ? "#999" : "#555" }}>
+        {element.location}
+      </Table.Td>
       <Table.Td>
-        {" "}
         <Badge
           variant="light"
           color={getCategoryColor(element.category)}
           size="lg"
           radius="md"
+          style={{ opacity: isRemoved ? 0.7 : 1 }}
         >
           {element.category.replace(/_/g, " ")}
         </Badge>
@@ -180,6 +199,7 @@ export default function Page() {
           color={getStatusColor(element.status)}
           size="lg"
           radius="md"
+          style={{ opacity: isRemoved ? 0.7 : 1 }}
         >
           {element.status}
         </Badge>
@@ -190,13 +210,12 @@ export default function Page() {
           color={getMsStatusColor(element.ms_status)}
           size="lg"
           radius="md"
+          style={{ opacity: isRemoved ? 0.7 : 1 }}
         >
           {element.ms_status}
         </Badge>
       </Table.Td>
-      <Table.Td
-        style={{ whiteSpace: "nowrap", textAlign: "center", width: "1px" }}
-      >
+      <Table.Td>
         <ActionIcon
           variant="light"
           color="orange"
@@ -211,7 +230,15 @@ export default function Page() {
         </ActionIcon>
       </Table.Td>
     </Table.Tr>
-  ));
+  );
+
+  // Create rows for active and removed schools
+  const activeRows = activeSchools.map((element) =>
+    createSchoolRow(element, false)
+  );
+  const removedRows = removedSchools.map((element) =>
+    createSchoolRow(element, true)
+  );
 
   return (
     <>
@@ -220,6 +247,7 @@ export default function Page() {
         onClose={closeMoreInfo}
         schoolName={selectedSchool?.name}
         schoolLogo={selectedSchool?.logo}
+        moreInfoNotes={selectedSchool?.more_info_notes}
       />
       <AddSchoolDesktopModal
         opened={opened}
@@ -238,6 +266,7 @@ export default function Page() {
           schoolCategoryProp={selectedSchool.category}
           schoolStatusProp={selectedSchool.status}
           schoolMsStatusProp={selectedSchool.ms_status}
+          schoolRemovedProp={selectedSchool.removed}
         />
       )}
       <div
@@ -323,8 +352,14 @@ export default function Page() {
           >
             <Table.Thead style={{ backgroundColor: "#f8f9fa" }}>
               <Table.Tr>
-                <Table.Th style={{ whiteSpace: "nowrap", textAlign: "center" }}>
-                  Edit School
+                <Table.Th
+                  style={{
+                    whiteSpace: "nowrap",
+                    textAlign: "center",
+                    width: "50px",
+                  }}
+                >
+                  Edit
                 </Table.Th>
                 <Table.Th>Category</Table.Th>
                 <Table.Th>School Name</Table.Th>
@@ -332,12 +367,40 @@ export default function Page() {
                 <Table.Th>Location Category</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>MS Program Type</Table.Th>
-                <Table.Th style={{ whiteSpace: "nowrap", textAlign: "center" }}>
-                  More Info
+                <Table.Th
+                  style={{
+                    whiteSpace: "nowrap",
+                    textAlign: "center",
+                    width: "50px",
+                  }}
+                >
+                  Info
                 </Table.Th>
               </Table.Tr>
             </Table.Thead>
-            <Table.Tbody>{rows}</Table.Tbody>
+            <Table.Tbody>
+              {activeRows}
+              {removedRows.length > 0 && (
+                <Table.Tr>
+                  <Table.Td
+                    colSpan={8}
+                    style={{
+                      backgroundColor: "#e9ecef",
+                      borderTop: "2px solid #dee2e6",
+                      borderBottom: "2px solid #dee2e6",
+                      textAlign: "center",
+                      padding: "12px",
+                      fontWeight: 600,
+                      color: "#6c757d",
+                      fontSize: "0.9rem",
+                    }}
+                  >
+                    Removed Schools
+                  </Table.Td>
+                </Table.Tr>
+              )}
+              {removedRows}
+            </Table.Tbody>
           </Table>
         </Paper>
       </div>

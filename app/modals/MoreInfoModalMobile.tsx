@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Modal,
   Text,
@@ -13,6 +13,8 @@ import {
   ScrollArea,
   Card,
   SimpleGrid,
+  Textarea,
+  ActionIcon,
 } from "@mantine/core";
 import {
   IconCalendar,
@@ -26,22 +28,62 @@ import {
   IconSchool,
   IconFileText,
   IconX,
+  IconEdit,
+  IconDeviceFloppy,
 } from "@tabler/icons-react";
 import Image from "next/image";
 
 interface MoreInfoModalMobileProps {
   opened: boolean;
   onClose: () => void;
+  schoolId: string;
   schoolName: string;
   schoolLogo: string;
+  moreInfoNotes: string;
 }
 
 function MoreInfoModalMobile({
   opened,
   onClose,
   schoolName,
+  schoolId,
   schoolLogo,
+  moreInfoNotes,
 }: MoreInfoModalMobileProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedNotes, setEditedNotes] = useState(moreInfoNotes);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/add-more-info", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: schoolId,
+          more_info_notes: editedNotes,
+        }),
+      });
+
+      if (response.ok) {
+        setIsEditing(false);
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("Error saving notes:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditedNotes(moreInfoNotes);
+    setIsEditing(false);
+  };
+
   return (
     <Modal
       opened={opened}
@@ -220,7 +262,7 @@ function MoreInfoModalMobile({
                 3.5+
               </Text>
               <Text size="xs" opacity={0.9}>
-                Avg GPA
+                US Rating
               </Text>
             </Card>
             <Card
@@ -248,16 +290,16 @@ function MoreInfoModalMobile({
                 <IconUsers size={20} />
               </div>
               <Text size="lg" fw={700} mb={2}>
-                2 yrs
+                15%
               </Text>
               <Text size="xs" opacity={0.9}>
-                Program Duration
+                Acceptance Rate
               </Text>
             </Card>
           </SimpleGrid>
 
           {/* Program Overview Section */}
-          <Card
+          {/* <Card
             shadow="sm"
             padding="lg"
             radius="md"
@@ -319,7 +361,7 @@ function MoreInfoModalMobile({
                 Thesis & Non-thesis Tracks
               </Badge>
             </Stack>
-          </Card>
+          </Card> */}
 
           {/* Admission Requirements Section */}
           <Card
@@ -342,7 +384,7 @@ function MoreInfoModalMobile({
               </Text>
             </Group>
             <Stack gap="md">
-              <div>
+              {/* <div>
                 <Text fw={600} size="sm" mb="xs" c="#1a1a1a">
                   Academic Requirements
                 </Text>
@@ -362,10 +404,10 @@ function MoreInfoModalMobile({
                   <List.Item>Prerequisite courses in relevant field</List.Item>
                   <List.Item>GRE scores (optional for some programs)</List.Item>
                 </List>
-              </div>
+              </div> */}
               <div>
                 <Text fw={600} size="sm" mb="xs" c="#1a1a1a">
-                  Application Materials
+                  {moreInfoNotes}
                 </Text>
                 <List
                   spacing="xs"
@@ -504,7 +546,7 @@ function MoreInfoModalMobile({
                 </Text>
               </Paper>
             </SimpleGrid>
-            <Divider my="md" />
+            {/* <Divider my="md" />
             <Text fw={600} size="sm" mb="xs" c="#1a1a1a">
               Funding Opportunities
             </Text>
@@ -549,11 +591,11 @@ function MoreInfoModalMobile({
                   Full tuition + living expenses
                 </Text>
               </List.Item>
-            </List>
+            </List> */}
           </Card>
 
           {/* Research Areas Section */}
-          <Card
+          {/* <Card
             shadow="sm"
             padding="lg"
             radius="md"
@@ -628,10 +670,10 @@ function MoreInfoModalMobile({
                 Computer Vision & Graphics
               </Badge>
             </Stack>
-          </Card>
+          </Card> */}
 
           {/* Campus & Location Section */}
-          <Card
+          {/* <Card
             shadow="sm"
             padding="lg"
             radius="md"
@@ -683,7 +725,7 @@ function MoreInfoModalMobile({
                 </Text>
               </Paper>
             </SimpleGrid>
-          </Card>
+          </Card> */}
 
           {/* Additional Notes Section */}
           <Card
@@ -692,43 +734,82 @@ function MoreInfoModalMobile({
             radius="md"
             style={{ marginBottom: "20px" }}
           >
-            <Group mb="sm">
-              <ThemeIcon
-                size="md"
-                radius="md"
-                variant="gradient"
-                gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
-              >
-                <IconFileText size={16} />
-              </ThemeIcon>
-              <Text size="lg" fw={700} c="#1a1a1a">
-                Personal Notes & Checklist
-              </Text>
+            <Group mb="sm" justify="space-between">
+              <Group>
+                <ThemeIcon
+                  size="md"
+                  radius="md"
+                  variant="gradient"
+                  gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
+                >
+                  <IconFileText size={16} />
+                </ThemeIcon>
+                <Text size="lg" fw={700} c="#1a1a1a">
+                  Additional Notes
+                </Text>
+              </Group>
+              {!isEditing && (
+                <ActionIcon
+                  variant="light"
+                  color="teal"
+                  size="md"
+                  radius="md"
+                  onClick={() => setIsEditing(true)}
+                >
+                  <IconEdit size={16} />
+                </ActionIcon>
+              )}
             </Group>
-            <Paper p="md" withBorder radius="md" bg="#f8f9fa">
-              <Text size="sm" c="#555" style={{ lineHeight: 1.6 }}>
-                <Text fw={600} mb="xs" c="#1a1a1a" component="span">
-                  Application Checklist:
+            {isEditing ? (
+              <Stack gap="sm">
+                <Textarea
+                  value={editedNotes}
+                  onChange={(e) => setEditedNotes(e.currentTarget.value)}
+                  placeholder="Add your notes here..."
+                  minRows={6}
+                  autosize
+                  styles={{
+                    input: {
+                      fontFamily: "inherit",
+                      fontSize: "14px",
+                      lineHeight: 1.6,
+                    },
+                  }}
+                />
+                <Group justify="flex-end" gap="xs">
+                  <Button
+                    variant="light"
+                    color="gray"
+                    size="sm"
+                    leftSection={<IconX size={14} />}
+                    onClick={handleCancel}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="gradient"
+                    gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
+                    size="sm"
+                    leftSection={<IconDeviceFloppy size={14} />}
+                    onClick={handleSave}
+                    loading={isSaving}
+                  >
+                    Save
+                  </Button>
+                </Group>
+              </Stack>
+            ) : (
+              <Paper p="md" withBorder radius="md" bg="#f8f9fa">
+                <Text
+                  size="sm"
+                  c="#555"
+                  style={{ lineHeight: 1.6, whiteSpace: "pre-wrap" }}
+                >
+                  {moreInfoNotes || "No notes added yet."}
                 </Text>
-                • Draft Statement of Purpose
-                <br />
-                • Request Letters of Recommendation
-                <br />
-                • Order Official Transcripts
-                <br />
-                • Prepare Resume/CV
-                <br />
-                • Take GRE (if required)
-                <br />
-                <br />
-                <Text fw={600} mb="xs" c="#1a1a1a" component="span">
-                  Additional Notes:
-                </Text>
-                This section can be used to track your personal application
-                progress, contact information for professors, or any specific
-                notes about this program.
-              </Text>
-            </Paper>
+              </Paper>
+            )}
           </Card>
 
           {/* Action Buttons */}

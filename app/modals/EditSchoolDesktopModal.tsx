@@ -17,6 +17,7 @@ interface EditSchoolDesktopModalProps {
   schoolCategoryProp: string;
   schoolStatusProp: string;
   schoolMsStatusProp: string;
+  schoolRemovedProp?: boolean;
 }
 
 function convertToDisplayFormat(value: string): string {
@@ -38,6 +39,7 @@ function EditSchoolDesktopModal({
   schoolCategoryProp,
   schoolStatusProp,
   schoolMsStatusProp,
+  schoolRemovedProp = false,
 }: EditSchoolDesktopModalProps) {
   const [schoolName, setSchoolName] = useState(schoolNameProp);
   const [schoolLocation, setSchoolLocation] = useState(schoolLocationProp);
@@ -54,10 +56,21 @@ function EditSchoolDesktopModal({
     convertToDisplayFormat(schoolMsStatusProp)
   );
   const [isEdited, setIsEdited] = useState(false);
+  const [removalReason, setRemovalReason] = useState("");
+
+  const [
+    removeConfirmOpened,
+    { open: openRemoveConfirm, close: closeRemoveConfirm },
+  ] = useDisclosure(false);
 
   const [
     deleteConfirmOpened,
     { open: openDeleteConfirm, close: closeDeleteConfirm },
+  ] = useDisclosure(false);
+
+  const [
+    addBackConfirmOpened,
+    { open: openAddBackConfirm, close: closeAddBackConfirm },
   ] = useDisclosure(false);
   useEffect(() => {
     setSchoolName(schoolNameProp);
@@ -122,25 +135,26 @@ function EditSchoolDesktopModal({
     onClose();
   };
 
-  const handleDeleteSchool = async () => {
-    await axios.post("/masters/api/delete-school", {
+  const handleRemoveSchool = async () => {
+    await axios.post("/masters/api/remove-school", {
       id: schoolIdProp,
+      removal_reason: removalReason,
     });
 
     notifications.show({
-      title: "School Deleted Successfully!",
-      message: `${schoolName} has been deleted from your tracker.`,
-      color: "red",
+      title: "School Removed Successfully!",
+      message: `${schoolName} has been removed from your tracker.`,
+      color: "orange",
       icon: <IconCheck size={18} />,
       autoClose: 4000,
       styles: {
         root: {
           background: "rgba(255, 255, 255, 0.98)",
           backdropFilter: "blur(10px)",
-          borderLeft: "4px solid #ef4444",
+          borderLeft: "4px solid #f97316",
         },
         title: {
-          background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
+          background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
           fontWeight: 700,
@@ -149,7 +163,87 @@ function EditSchoolDesktopModal({
           color: "#555",
         },
         icon: {
-          background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
+          background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
+        },
+      },
+    });
+
+    if (onSchoolEdited) {
+      await onSchoolEdited();
+    }
+
+    closeRemoveConfirm();
+    onClose();
+  };
+
+  const handleAddSchoolBack = async () => {
+    await axios.post("/masters/api/add-school-back", {
+      id: schoolIdProp,
+    });
+
+    notifications.show({
+      title: "School Added Back Successfully!",
+      message: `${schoolName} has been added back to your tracker.`,
+      color: "yellow",
+      icon: <IconCheck size={18} />,
+      autoClose: 4000,
+      styles: {
+        root: {
+          background: "rgba(255, 255, 255, 0.98)",
+          backdropFilter: "blur(10px)",
+          borderLeft: "4px solid #eab308",
+        },
+        title: {
+          background: "linear-gradient(135deg, #eab308 0%, #ca8a04 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          fontWeight: 700,
+        },
+        description: {
+          color: "#555",
+        },
+        icon: {
+          background: "linear-gradient(135deg, #eab308 0%, #ca8a04 100%)",
+        },
+      },
+    });
+
+    if (onSchoolEdited) {
+      await onSchoolEdited();
+    }
+
+    closeAddBackConfirm();
+    onClose();
+  };
+
+  const handleDeleteForever = async () => {
+    await axios.post("/masters/api/delete-school", {
+      id: schoolIdProp,
+    });
+
+    notifications.show({
+      title: "School Deleted Forever!",
+      message: `${schoolName} has been permanently deleted from your tracker.`,
+      color: "red",
+      icon: <IconCheck size={18} />,
+      autoClose: 4000,
+      styles: {
+        root: {
+          background: "rgba(255, 255, 255, 0.98)",
+          backdropFilter: "blur(10px)",
+          borderLeft: "4px solid #dc2626",
+        },
+        title: {
+          background: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          fontWeight: 700,
+        },
+        description: {
+          color: "#555",
+        },
+        icon: {
+          background: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
         },
       },
     });
@@ -266,7 +360,7 @@ function EditSchoolDesktopModal({
           />
           <Select
             placeholder="School Status"
-            data={["Applying", "Applied", "Rejected", "Accepted"]}
+            data={["Applying", "Applied", "Rejected", "Accepted", "Removed"]}
             size="md"
             radius="md"
             value={schoolStatus}
@@ -310,41 +404,147 @@ function EditSchoolDesktopModal({
           >
             Edit School
           </Button>
+          {schoolRemovedProp ? (
+            <Button
+              onClick={openAddBackConfirm}
+              variant="gradient"
+              gradient={{ from: "#eab308", to: "#ca8a04", deg: 135 }}
+              size="md"
+              radius="md"
+              style={{
+                fontWeight: 600,
+                boxShadow: "0 4px 12px rgba(234, 179, 8, 0.3)",
+              }}
+            >
+              Add School Back
+            </Button>
+          ) : (
+            <Button
+              onClick={openRemoveConfirm}
+              variant="gradient"
+              gradient={{ from: "#f97316", to: "#ea580c", deg: 135 }}
+              size="md"
+              radius="md"
+              style={{
+                fontWeight: 600,
+                boxShadow: "0 4px 12px rgba(249, 115, 22, 0.3)",
+              }}
+            >
+              Remove School
+            </Button>
+          )}
           <Button
             onClick={openDeleteConfirm}
             variant="gradient"
-            gradient={{ from: "#ef4444", to: "#b91c1c", deg: 135 }}
+            gradient={{ from: "#dc2626", to: "#991b1b", deg: 135 }}
             size="md"
             radius="md"
             style={{
               fontWeight: 600,
-              boxShadow: "0 4px 12px rgba(239, 68, 68, 0.3)",
+              boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)",
             }}
           >
-            Delete School
+            Delete Forever
+          </Button>
+        </div>
+      </Modal>
+      <Modal
+        opened={removeConfirmOpened}
+        onClose={closeRemoveConfirm}
+        title="Remove School"
+      >
+        <div className="flex flex-col gap-4">
+          <Text>Are you sure you want to remove {schoolName}?</Text>
+          <Input
+            placeholder="Enter removal reason"
+            size="md"
+            radius="md"
+            value={removalReason}
+            onChange={(e) => setRemovalReason(e.target.value)}
+            required
+            styles={{
+              input: {
+                borderColor: "#e0e0e0",
+                "&:focus": {
+                  borderColor: "#f97316",
+                },
+              },
+            }}
+          />
+          <Button
+            onClick={handleRemoveSchool}
+            variant="gradient"
+            gradient={{ from: "#f97316", to: "#ea580c", deg: 135 }}
+            size="md"
+            radius="md"
+            disabled={!removalReason.trim()}
+          >
+            Yes, Remove School
+          </Button>
+          <Button
+            onClick={closeRemoveConfirm}
+            variant="gradient"
+            gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
+            size="md"
+            radius="md"
+          >
+            No, Cancel
           </Button>
         </div>
       </Modal>
       <Modal
         opened={deleteConfirmOpened}
         onClose={closeDeleteConfirm}
-        title="Delete School"
+        title="Delete School Forever"
       >
         <div className="flex flex-col gap-4">
-          <Text>Are you sure you want to delete {schoolName}?</Text>
+          <Text>⚠️ WARNING: This action cannot be undone!</Text>
+          <Text>
+            Are you absolutely sure you want to permanently delete {schoolName}?
+          </Text>
           <Button
-            onClick={handleDeleteSchool}
+            onClick={handleDeleteForever}
             variant="gradient"
-            gradient={{ from: "#ef4444", to: "#b91c1c", deg: 135 }}
+            gradient={{ from: "#dc2626", to: "#991b1b", deg: 135 }}
             size="md"
             radius="md"
           >
-            Delete School
+            Yes, Delete Forever
           </Button>
           <Button
             onClick={closeDeleteConfirm}
             variant="gradient"
             gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
+            size="md"
+            radius="md"
+          >
+            No, Cancel
+          </Button>
+        </div>
+      </Modal>
+      <Modal
+        opened={addBackConfirmOpened}
+        onClose={closeAddBackConfirm}
+        title="Add School Back"
+      >
+        <div className="flex flex-col gap-4">
+          <Text>
+            Are you sure you want to add {schoolName} back to your active
+            schools?
+          </Text>
+          <Button
+            onClick={handleAddSchoolBack}
+            variant="gradient"
+            gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
+            size="md"
+            radius="md"
+          >
+            Yes, Add School Back
+          </Button>
+          <Button
+            onClick={closeAddBackConfirm}
+            variant="gradient"
+            gradient={{ from: "#f97316", to: "#ea580c", deg: 135 }}
             size="md"
             radius="md"
           >

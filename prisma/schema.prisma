@@ -15,14 +15,17 @@ model Password {
 }
 
 model Schools {
-  id        String   @id @default(cuid())
-  logo      String   @default("")
-  name      String
-  location  String
-  tiers     Tiers
-  category  Category
-  status    Status   @default(APPLYING)
-  ms_status MsStatus @default(RESEARCH_BASED)
+  id              String   @id @default(cuid())
+  logo            String   @default("")
+  name            String
+  location        String
+  tiers           Tiers
+  category        Category
+  status          Status   @default(APPLYING)
+  ms_status       MsStatus @default(RESEARCH_BASED)
+  removed         Boolean  @default(false)
+  removal_reason  String?  @default("")
+  more_info_notes String?  @default("")
 }
 
 enum MsStatus {
@@ -51,4 +54,5 @@ enum Status {
   APPLIED
   REJECTED
   ACCEPTED
+  REMOVED
 }
