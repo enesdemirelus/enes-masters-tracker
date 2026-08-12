@@ -19,6 +19,7 @@ function AddSchoolDesktopModal({
 }: AddSchoolDesktopModalProps) {
   const [schoolName, setSchoolName] = useState("");
   const [schoolLocation, setSchoolLocation] = useState("");
+  const [schoolPriority, setSchoolPriority] = useState("");
   const [schoolTier, setSchoolTier] = useState("");
   const [schoolCategory, setSchoolCategory] = useState("");
   const [schoolStatus, setSchoolStatus] = useState("");
@@ -29,6 +30,7 @@ function AddSchoolDesktopModal({
     await axios.post("/masters/api/add-school", {
       name: schoolName,
       location: schoolLocation,
+      priority: schoolPriority,
       tiers: schoolTier,
       category: schoolCategory,
       status: schoolStatus,
@@ -69,6 +71,7 @@ function AddSchoolDesktopModal({
 
     setSchoolName("");
     setSchoolLocation("");
+    setSchoolPriority("");
     setSchoolTier("");
     setSchoolCategory("");
     setSchoolStatus("");
@@ -128,6 +131,22 @@ function AddSchoolDesktopModal({
           radius="md"
           value={schoolLocation}
           onChange={(e) => setSchoolLocation(e.target.value)}
+          styles={{
+            input: {
+              borderColor: "#e0e0e0",
+              "&:focus": {
+                borderColor: "#10b981",
+              },
+            },
+          }}
+        />
+        <Select
+          placeholder="School Priority"
+          data={["HIGH", "MEDIUM", "LOW"]}
+          size="md"
+          radius="md"
+          value={schoolPriority}
+          onChange={(value) => setSchoolPriority(value ?? "LOW")}
           styles={{
             input: {
               borderColor: "#e0e0e0",

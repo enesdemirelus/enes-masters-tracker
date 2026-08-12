@@ -40,6 +40,7 @@ interface MoreInfoModalMobileProps {
   schoolName: string;
   schoolLogo: string;
   moreInfoNotes: string;
+  msStatus: string;
 }
 
 function MoreInfoModalMobile({
@@ -49,6 +50,7 @@ function MoreInfoModalMobile({
   schoolId,
   schoolLogo,
   moreInfoNotes,
+  msStatus,
 }: MoreInfoModalMobileProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedNotes, setEditedNotes] = useState(moreInfoNotes);
@@ -160,10 +162,34 @@ function MoreInfoModalMobile({
                 color: "rgba(255, 255, 255, 0.9)",
                 fontSize: "0.875rem",
                 fontWeight: 500,
+                marginBottom: "6px",
               }}
             >
               Master's Program Details
             </Text>
+            <Badge
+              variant="light"
+              color={
+                msStatus === "RESEARCH_BASED"
+                  ? "green"
+                  : msStatus === "PROFESSIONAL_TRACK"
+                  ? "purple"
+                  : "gray"
+              }
+              size="sm"
+              radius="md"
+              style={{
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
+                color: "white",
+                border: "1px solid rgba(255, 255, 255, 0.3)",
+              }}
+            >
+              {msStatus === "RESEARCH_BASED"
+                ? "Research Based"
+                : msStatus === "PROFESSIONAL_TRACK"
+                ? "Professional Track"
+                : "No Masters"}
+            </Badge>
           </div>
         </div>
       }

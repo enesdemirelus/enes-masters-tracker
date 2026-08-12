@@ -21,6 +21,7 @@ interface School {
   id: string;
   name: string;
   location: string;
+  priority: string;
   tiers: string;
   category: string;
   status: string;
@@ -28,25 +29,26 @@ interface School {
   logo: string;
   removed?: boolean;
   removal_reason?: string;
+  more_info_notes?: string;
 }
 
 interface MobileSchoolsViewProps {
   activeSchools: School[];
   removedSchools: School[];
+  getPriorityColor: (priority: string) => string;
   getTierColor: (tier: string) => string;
   getCategoryColor: (category: string) => string;
   getStatusColor: (status: string) => string;
-  getMsStatusColor: (ms_status: string) => string;
   onSchoolAdded?: () => void;
 }
 
 export default function MobileSchoolsView({
   activeSchools,
   removedSchools,
+  getPriorityColor,
   getTierColor,
   getCategoryColor,
   getStatusColor,
-  getMsStatusColor,
   onSchoolAdded,
 }: MobileSchoolsViewProps) {
   const [opened, { open, close }] = useDisclosure(false);
@@ -140,6 +142,19 @@ export default function MobileSchoolsView({
           <Badge
             variant="gradient"
             gradient={{
+              from: getPriorityColor(element.priority),
+              to: getPriorityColor(element.priority),
+              deg: 90,
+            }}
+            size="xs"
+            radius="md"
+            style={{ opacity: isRemoved ? 0.7 : 1 }}
+          >
+            {element.priority || 'LOW'}
+          </Badge>
+          <Badge
+            variant="gradient"
+            gradient={{
               from: getTierColor(element.tiers),
               to: getTierColor(element.tiers),
               deg: 90,
@@ -170,15 +185,6 @@ export default function MobileSchoolsView({
               {element.status}
             </Badge>
           )}
-          <Badge
-            variant="light"
-            color={getMsStatusColor(element.ms_status)}
-            size="xs"
-            radius="md"
-            style={{ opacity: isRemoved ? 0.7 : 1 }}
-          >
-            {element.ms_status}
-          </Badge>
         </Group>
       </Stack>
     </Card>
@@ -189,8 +195,11 @@ export default function MobileSchoolsView({
       <MoreInfoModalMobile
         opened={moreInfoOpened}
         onClose={closeMoreInfo}
+        schoolId={selectedSchool?.id || ""}
         schoolName={selectedSchool?.name || ""}
         schoolLogo={selectedSchool?.logo || ""}
+        moreInfoNotes={selectedSchool?.more_info_notes || ""}
+        msStatus={selectedSchool?.ms_status || "RESEARCH_BASED"}
       />
       <AddSchoolDesktopModal
         opened={opened}
@@ -207,6 +216,7 @@ export default function MobileSchoolsView({
           schoolIdProp={selectedSchool.id}
           schoolNameProp={selectedSchool.name}
           schoolLocationProp={selectedSchool.location}
+          schoolPriorityProp={selectedSchool.priority}
           schoolTierProp={selectedSchool.tiers}
           schoolCategoryProp={selectedSchool.category}
           schoolStatusProp={selectedSchool.status}

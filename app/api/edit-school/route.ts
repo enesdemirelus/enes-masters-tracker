@@ -3,7 +3,7 @@ import { prisma } from "@/prisma/client";
 
 export async function POST(request: Request) {
   try {
-    const { id, name, location, tiers, category, status, ms_status } =
+    const { id, name, location, priority, tiers, category, status, ms_status } =
       await request.json();
 
     if (!id) {
@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     let new_category = category;
     let new_status = status;
     let new_ms_status = ms_status;
+    let new_priority = priority || "LOW"; // Default to LOW if not provided
 
 
 
@@ -76,6 +77,7 @@ export async function POST(request: Request) {
     const schoolData = {
       name,
       location,
+      priority: new_priority,
       tiers: new_tiers,
       category: new_category,
       status: new_status,

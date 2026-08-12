@@ -13,6 +13,7 @@ interface EditSchoolDesktopModalProps {
   schoolIdProp: string;
   schoolNameProp: string;
   schoolLocationProp: string;
+  schoolPriorityProp: string;
   schoolTierProp: string;
   schoolCategoryProp: string;
   schoolStatusProp: string;
@@ -35,6 +36,7 @@ function EditSchoolDesktopModal({
   schoolIdProp,
   schoolNameProp,
   schoolLocationProp,
+  schoolPriorityProp,
   schoolTierProp,
   schoolCategoryProp,
   schoolStatusProp,
@@ -43,6 +45,7 @@ function EditSchoolDesktopModal({
 }: EditSchoolDesktopModalProps) {
   const [schoolName, setSchoolName] = useState(schoolNameProp);
   const [schoolLocation, setSchoolLocation] = useState(schoolLocationProp);
+  const [schoolPriority, setSchoolPriority] = useState(schoolPriorityProp);
   const [schoolTier, setSchoolTier] = useState(
     convertToDisplayFormat(schoolTierProp)
   );
@@ -75,6 +78,7 @@ function EditSchoolDesktopModal({
   useEffect(() => {
     setSchoolName(schoolNameProp);
     setSchoolLocation(schoolLocationProp);
+    setSchoolPriority(schoolPriorityProp);
     setSchoolTier(convertToDisplayFormat(schoolTierProp));
     setSchoolCategory(convertToDisplayFormat(schoolCategoryProp));
     setSchoolStatus(convertToDisplayFormat(schoolStatusProp));
@@ -83,6 +87,7 @@ function EditSchoolDesktopModal({
     schoolIdProp,
     schoolNameProp,
     schoolLocationProp,
+    schoolPriorityProp,
     schoolTierProp,
     schoolCategoryProp,
     schoolStatusProp,
@@ -94,6 +99,7 @@ function EditSchoolDesktopModal({
       id: schoolIdProp,
       name: schoolName,
       location: schoolLocation,
+      priority: schoolPriority,
       tiers: schoolTier,
       category: schoolCategory,
       status: schoolStatus,
@@ -320,6 +326,22 @@ function EditSchoolDesktopModal({
             }}
           />
 
+          <Select
+            placeholder="School Priority"
+            data={["HIGH", "MEDIUM", "LOW"]}
+            size="md"
+            radius="md"
+            value={schoolPriority}
+            onChange={(value) => setSchoolPriority(value ?? "LOW")}
+            styles={{
+              input: {
+                borderColor: "#e0e0e0",
+                "&:focus": {
+                  borderColor: "#10b981",
+                },
+              },
+            }}
+          />
           <Select
             placeholder="School Tier"
             data={["Safety", "Target", "Reach"]}

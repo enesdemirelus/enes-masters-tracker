@@ -46,26 +46,48 @@ export default function Page() {
       element.tiers.toLowerCase().includes(query) ||
       element.category.toLowerCase().includes(query) ||
       element.status.toLowerCase().includes(query) ||
-      element.ms_status.toLowerCase().includes(query)
+      element.ms_status.toLowerCase().includes(query) ||
+      element.priority.toLowerCase().includes(query)
     );
   });
 
-  // Separate active and removed schools
-  const activeSchools = filteredElements.filter((element) => !element.removed);
-  const removedSchools = filteredElements.filter((element) => element.removed);
+  // Priority order for sorting
+  const priorityOrder = { HIGH: 1, MEDIUM: 2, LOW: 3 };
+
+  // Separate active and removed schools and sort by priority
+  const activeSchools = filteredElements
+    .filter((element) => !element.removed)
+    .sort((a, b) => priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder]);
+  
+  const removedSchools = filteredElements
+    .filter((element) => element.removed)
+    .sort((a, b) => priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder]);
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "HIGH":
+        return "red";
+      case "MEDIUM":
+        return "orange";
+      case "LOW":
+        return "green";
+      default:
+        return "gray";
+    }
+  };
 
   const getTierColor = (tier: string) => {
     switch (tier) {
       case "SAFETY":
-        return "green";
+        return "blue";
       case "TARGET":
-        return "orange";
+        return "purple";
       case "REACH":
-        return "red";
+        return "pink";
       case "NOT_SURE":
         return "black";
       default:
-        return "blue";
+        return "gray";
     }
   };
 
@@ -102,28 +124,15 @@ export default function Page() {
         return "blue";
     }
   };
-
-  const getMsStatusColor = (msStatus: string) => {
-    switch (msStatus) {
-      case "RESEARCH_BASED":
-        return "green";
-      case "PROFESSIONAL_TRACK":
-        return "purple";
-      case "NO_MASTERS":
-        return "gray";
-      default:
-        return "green";
-    }
-  };
   if (isMobile) {
     return (
       <MobileSchoolsView
         activeSchools={activeSchools}
         removedSchools={removedSchools}
+        getPriorityColor={getPriorityColor}
         getTierColor={getTierColor}
         getCategoryColor={getCategoryColor}
         getStatusColor={getStatusColor}
-        getMsStatusColor={getMsStatusColor}
         onSchoolAdded={fetchSchools}
       />
     );
@@ -152,7 +161,22 @@ export default function Page() {
           <IconEdit size={18} />
         </ActionIcon>
       </Table.Td>
-      <Table.Td>
+      <Table.Td style={{ textAlign: "center" }}>
+        <Badge
+          variant="gradient"
+          gradient={{
+            from: getPriorityColor(element.priority),
+            to: getPriorityColor(element.priority),
+            deg: 90,
+          }}
+          size="lg"
+          radius="md"
+          style={{ opacity: isRemoved ? 0.7 : 1 }}
+        >
+          {element.priority || 'LOW'}
+        </Badge>
+      </Table.Td>
+      <Table.Td style={{ textAlign: "center" }}>
         <Badge
           variant="gradient"
           gradient={{
@@ -182,7 +206,7 @@ export default function Page() {
       <Table.Td style={{ color: isRemoved ? "#999" : "#555" }}>
         {element.location}
       </Table.Td>
-      <Table.Td>
+      <Table.Td style={{ textAlign: "center" }}>
         <Badge
           variant="light"
           color={getCategoryColor(element.category)}
@@ -193,7 +217,7 @@ export default function Page() {
           {element.category.replace(/_/g, " ")}
         </Badge>
       </Table.Td>
-      <Table.Td>
+      <Table.Td style={{ textAlign: "center" }}>
         <Badge
           variant="light"
           color={getStatusColor(element.status)}
@@ -202,17 +226,6 @@ export default function Page() {
           style={{ opacity: isRemoved ? 0.7 : 1 }}
         >
           {element.status}
-        </Badge>
-      </Table.Td>
-      <Table.Td>
-        <Badge
-          variant="light"
-          color={getMsStatusColor(element.ms_status)}
-          size="lg"
-          radius="md"
-          style={{ opacity: isRemoved ? 0.7 : 1 }}
-        >
-          {element.ms_status}
         </Badge>
       </Table.Td>
       <Table.Td>
@@ -245,9 +258,11 @@ export default function Page() {
       <MoreInfoModal
         opened={moreInfoOpened}
         onClose={closeMoreInfo}
+        schoolId={selectedSchool?.id}
         schoolName={selectedSchool?.name}
         schoolLogo={selectedSchool?.logo}
         moreInfoNotes={selectedSchool?.more_info_notes}
+        msStatus={selectedSchool?.ms_status}
       />
       <AddSchoolDesktopModal
         opened={opened}
@@ -262,6 +277,7 @@ export default function Page() {
           schoolIdProp={selectedSchool.id}
           schoolNameProp={selectedSchool.name}
           schoolLocationProp={selectedSchool.location}
+          schoolPriorityProp={selectedSchool.priority}
           schoolTierProp={selectedSchool.tiers}
           schoolCategoryProp={selectedSchool.category}
           schoolStatusProp={selectedSchool.status}
@@ -361,12 +377,12 @@ export default function Page() {
                 >
                   Edit
                 </Table.Th>
-                <Table.Th>Category</Table.Th>
+                <Table.Th style={{ minWidth: "110px", width: "110px", textAlign: "center" }}>Priority</Table.Th>
+                <Table.Th style={{ minWidth: "100px", width: "100px", textAlign: "center" }}>Category</Table.Th>
                 <Table.Th>School Name</Table.Th>
                 <Table.Th>Location</Table.Th>
-                <Table.Th>Location Category</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th>MS Program Type</Table.Th>
+                <Table.Th style={{ minWidth: "150px", textAlign: "center" }}>Location Category</Table.Th>
+                <Table.Th style={{ minWidth: "120px", textAlign: "center" }}>Status</Table.Th>
                 <Table.Th
                   style={{
                     whiteSpace: "nowrap",
