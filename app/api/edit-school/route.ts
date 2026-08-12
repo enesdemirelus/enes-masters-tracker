@@ -1,10 +1,34 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/prisma/client";
+import {
+  Category,
+  GreStatus,
+  MsStatus,
+  Priority,
+  Status,
+  Tiers,
+} from "@/app/generated/prisma";
+
+// Accepts both raw enum values ("NOT_SURE") and display strings ("Not Sure")
+// and normalizes them to the Prisma enum form.
+function normalizeEnum(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.trim().toUpperCase().replace(/\s+/g, "_");
+}
+
+function parseEnum<T extends Record<string, string>>(
+  enumObject: T,
+  value: unknown
+): T[keyof T] | null {
+  const normalized = normalizeEnum(value);
+  const allowed = Object.values(enumObject) as string[];
+  return allowed.includes(normalized) ? (normalized as T[keyof T]) : null;
+}
 
 export async function POST(request: Request) {
   try {
-    const { id, name, location, priority, tiers, category, status, ms_status } =
-      await request.json();
+    const body = await request.json();
+    const { id } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -13,89 +37,102 @@ export async function POST(request: Request) {
       );
     }
 
-    if (
-      !name ||
-      !location ||
-      !tiers ||
-      !category ||
-      !status ||
-      !ms_status
-    ) {
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    const location =
+      typeof body.location === "string" ? body.location.trim() : "";
+
+    if (!name || !location) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    let new_tiers = tiers;
-    let new_category = category;
-    let new_status = status;
-    let new_ms_status = ms_status;
-    let new_priority = priority || "LOW"; // Default to LOW if not provided
+    const tiers = parseEnum(Tiers, body.tiers);
+    const category = parseEnum(Category, body.category);
+    const status = parseEnum(Status, body.status);
+    const ms_status = parseEnum(MsStatus, body.ms_status);
 
-
-
-    if (category === "Around Illinois") {
-      new_category = "AROUND_ILLINOIS";
-    } else if (category === "In Chicago") {
-      new_category = "IN_CHICAGO";
-    } else if (category === "In Illinois") {
-      new_category = "IN_ILLINOIS";
-    } else if (category === "In California") {
-      new_category = "IN_CALIFORNIA";
-    } else if (category === "Far") {
-      new_category = "FAR";
+    if (!tiers || !category || !status || !ms_status) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
     }
 
-    if (tiers === "Safety") {
-      new_tiers = "SAFETY";
-    } else if (tiers === "Target") {
-      new_tiers = "TARGET";
-    } else if (tiers === "Reach") {
-      new_tiers = "REACH";
-    }
+    const priority = parseEnum(Priority, body.priority) ?? Priority.LOW;
 
-    if (status === "Applying") {
-      new_status = "APPLYING";
-    } else if (status === "Applied") {
-      new_status = "APPLIED";
-    } else if (status === "Rejected") {
-      new_status = "REJECTED";
-    } else if (status === "Accepted") {
-      new_status = "ACCEPTED";
-    }
-
-    if (ms_status === "Research Based") {
-      new_ms_status = "RESEARCH_BASED";
-    } else if (ms_status === "Professional Track") {
-      new_ms_status = "PROFESSIONAL_TRACK";
-    } else if (ms_status === "No Masters") {
-      new_ms_status = "NO_MASTERS";
-    }
-
-
-    const schoolData = {
+    const schoolData: {
+      name: string;
+      location: string;
+      priority: Priority;
+      tiers: Tiers;
+      category: Category;
+      status: Status;
+      ms_status: MsStatus;
+      removed: boolean;
+      gre?: GreStatus;
+      recommendation_count?: number;
+      non_thesis_option?: boolean;
+      professional_masters?: boolean;
+      duration?: string;
+    } = {
       name,
       location,
-      priority: new_priority,
-      tiers: new_tiers,
-      category: new_category,
-      status: new_status,
-      ms_status: new_ms_status,
+      priority,
+      tiers,
+      category,
+      status,
+      ms_status,
+      // Keep the removed flag in sync with the status the user picked.
+      removed: status === Status.REMOVED,
     };
 
-    const school = await prisma.schools.upsert({
+    // The new fields are only written when the client actually sends them, so
+    // clients that don't know about them yet can't clobber stored values.
+    const gre = parseEnum(GreStatus, body.gre);
+    if (gre) {
+      schoolData.gre = gre;
+    }
+
+    if (
+      typeof body.recommendation_count === "number" &&
+      Number.isInteger(body.recommendation_count) &&
+      body.recommendation_count >= 0
+    ) {
+      schoolData.recommendation_count = body.recommendation_count;
+    }
+
+    if (typeof body.non_thesis_option === "boolean") {
+      schoolData.non_thesis_option = body.non_thesis_option;
+    }
+
+    if (typeof body.professional_masters === "boolean") {
+      schoolData.professional_masters = body.professional_masters;
+    }
+
+    if (typeof body.duration === "string") {
+      schoolData.duration = body.duration;
+    }
+
+    const school = await prisma.schools.update({
       where: { id },
-      update: schoolData,
-      create: {
-        id,
-        ...schoolData,
-      },
+      data: schoolData,
     });
 
     return NextResponse.json(school);
   } catch (error) {
     console.error("Error updating school:", error);
+
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2025"
+    ) {
+      return NextResponse.json({ error: "School not found" }, { status: 404 });
+    }
+
     return NextResponse.json(
       { error: "Failed to update school" },
       { status: 500 }

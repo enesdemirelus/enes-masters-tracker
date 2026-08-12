@@ -13,9 +13,10 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!more_info_notes) {
+    // An empty string is valid here — that is how notes get cleared.
+    if (typeof more_info_notes !== "string") {
       return NextResponse.json(
-        { error: "More info notes are required" },
+        { error: "More info notes must be a string" },
         { status: 400 }
       );
     }

@@ -14,11 +14,18 @@ export async function POST(request: Request) {
       );
     }
 
+    if (typeof removal_reason !== "string" || !removal_reason.trim()) {
+      return NextResponse.json(
+        { error: "A removal reason is required" },
+        { status: 400 }
+      );
+    }
+
     const school = await prisma.schools.update({
       data: {
         removed: true,
-        removal_reason: removal_reason,
-          status: Status.REMOVED,
+        removal_reason: removal_reason.trim(),
+        status: Status.REMOVED,
       },
       where: { id }
     });

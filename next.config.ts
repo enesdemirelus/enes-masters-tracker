@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
-const nextConfig = {
-  basePath: '/masters',
+const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
@@ -11,4 +10,5 @@ const nextConfig = {
     ],
   },
 };
-module.exports = nextConfig;
+
+export default nextConfig;

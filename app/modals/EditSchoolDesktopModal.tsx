@@ -1,14 +1,38 @@
-import React, { useState, useEffect } from "react";
-import { Button, Input, Modal, Select, Text } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
-import { IconCheck } from "@tabler/icons-react";
+"use client";
+
+import { useState, useEffect } from "react";
+import {
+  Button,
+  Checkbox,
+  Group,
+  Modal,
+  NumberInput,
+  Select,
+  Stack,
+  Text,
+  TextInput,
+} from "@mantine/core";
 import axios from "axios";
 import { useDisclosure } from "@mantine/hooks";
+import {
+  dangerButtonStyle,
+  errorMessage,
+  inputStyles,
+  modalStyles,
+  notifyError,
+  notifySuccess,
+  overlayProps,
+  primaryButtonStyle,
+  recommendationCountBody,
+  secondaryButtonStyle,
+  toDisplay,
+  ui,
+} from "./modalTheme";
 
 interface EditSchoolDesktopModalProps {
   opened: boolean;
   onClose: () => void;
-  onSchoolEdited?: () => void;
+  onSchoolEdited?: () => void | Promise<void>;
   isMobile?: boolean;
   schoolIdProp: string;
   schoolNameProp: string;
@@ -19,13 +43,33 @@ interface EditSchoolDesktopModalProps {
   schoolStatusProp: string;
   schoolMsStatusProp: string;
   schoolRemovedProp?: boolean;
+  schoolGreProp?: string;
+  schoolRecommendationCountProp?: number;
+  schoolNonThesisOptionProp?: boolean;
+  schoolProfessionalMastersProp?: boolean;
+  schoolDurationProp?: string | null;
 }
 
-function convertToDisplayFormat(value: string): string {
-  return value
-    .split("_")
-    .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
-    .join(" ");
+const PRIORITY_OPTIONS = ["High", "Medium", "Low"];
+const TIER_OPTIONS = ["Safety", "Target", "Reach", "Not Sure"];
+const CATEGORY_OPTIONS = [
+  "Around Illinois",
+  "In Chicago",
+  "In Illinois",
+  "In California",
+  "Far",
+];
+const STATUS_OPTIONS = ["Applying", "Applied", "Rejected", "Accepted"];
+// "Removed" is only offered for schools that are already removed, so that the
+// value round-trips on save. Active schools must go through the Remove button,
+// which collects the removal reason that /api/remove-school requires.
+const REMOVED_STATUS_OPTIONS = [...STATUS_OPTIONS, "Removed"];
+const MS_STATUS_OPTIONS = ["Research Based", "Professional Track", "No Masters"];
+const GRE_OPTIONS = ["Not Required", "Optional", "Required"];
+
+/** Enum value -> Select option label. Blank values stay blank (placeholder). */
+function toOption(value?: string | null): string {
+  return value ? toDisplay(value) : "";
 }
 
 function EditSchoolDesktopModal({
@@ -42,24 +86,43 @@ function EditSchoolDesktopModal({
   schoolStatusProp,
   schoolMsStatusProp,
   schoolRemovedProp = false,
+  schoolGreProp,
+  schoolRecommendationCountProp,
+  schoolNonThesisOptionProp,
+  schoolProfessionalMastersProp,
+  schoolDurationProp,
 }: EditSchoolDesktopModalProps) {
   const [schoolName, setSchoolName] = useState(schoolNameProp);
   const [schoolLocation, setSchoolLocation] = useState(schoolLocationProp);
-  const [schoolPriority, setSchoolPriority] = useState(schoolPriorityProp);
-  const [schoolTier, setSchoolTier] = useState(
-    convertToDisplayFormat(schoolTierProp)
+  const [schoolPriority, setSchoolPriority] = useState(
+    toOption(schoolPriorityProp)
   );
+  const [schoolTier, setSchoolTier] = useState(toOption(schoolTierProp));
   const [schoolCategory, setSchoolCategory] = useState(
-    convertToDisplayFormat(schoolCategoryProp)
+    toOption(schoolCategoryProp)
   );
-  const [schoolStatus, setSchoolStatus] = useState(
-    convertToDisplayFormat(schoolStatusProp)
-  );
+  const [schoolStatus, setSchoolStatus] = useState(toOption(schoolStatusProp));
   const [schoolMsStatus, setSchoolMsStatus] = useState(
-    convertToDisplayFormat(schoolMsStatusProp)
+    toOption(schoolMsStatusProp)
   );
-  const [isEdited, setIsEdited] = useState(false);
+  const [gre, setGre] = useState(toOption(schoolGreProp) || "Not Required");
+  const [recommendationCount, setRecommendationCount] = useState<
+    number | string
+  >(schoolRecommendationCountProp ?? 3);
+  const [nonThesisOption, setNonThesisOption] = useState(
+    schoolNonThesisOptionProp ?? false
+  );
+  const [professionalMasters, setProfessionalMasters] = useState(
+    schoolProfessionalMastersProp ?? false
+  );
+  const [duration, setDuration] = useState(schoolDurationProp ?? "");
   const [removalReason, setRemovalReason] = useState("");
+  const [pendingAction, setPendingAction] = useState<
+    "edit" | "remove" | "delete" | "add-back" | null
+  >(null);
+
+  const isRemoved =
+    schoolRemovedProp || toOption(schoolStatusProp) === "Removed";
 
   const [
     removeConfirmOpened,
@@ -75,14 +138,21 @@ function EditSchoolDesktopModal({
     addBackConfirmOpened,
     { open: openAddBackConfirm, close: closeAddBackConfirm },
   ] = useDisclosure(false);
+
   useEffect(() => {
     setSchoolName(schoolNameProp);
     setSchoolLocation(schoolLocationProp);
-    setSchoolPriority(schoolPriorityProp);
-    setSchoolTier(convertToDisplayFormat(schoolTierProp));
-    setSchoolCategory(convertToDisplayFormat(schoolCategoryProp));
-    setSchoolStatus(convertToDisplayFormat(schoolStatusProp));
-    setSchoolMsStatus(convertToDisplayFormat(schoolMsStatusProp));
+    setSchoolPriority(toOption(schoolPriorityProp));
+    setSchoolTier(toOption(schoolTierProp));
+    setSchoolCategory(toOption(schoolCategoryProp));
+    setSchoolStatus(toOption(schoolStatusProp));
+    setSchoolMsStatus(toOption(schoolMsStatusProp));
+    setGre(toOption(schoolGreProp) || "Not Required");
+    setRecommendationCount(schoolRecommendationCountProp ?? 3);
+    setNonThesisOption(schoolNonThesisOptionProp ?? false);
+    setProfessionalMasters(schoolProfessionalMastersProp ?? false);
+    setDuration(schoolDurationProp ?? "");
+    setRemovalReason("");
   }, [
     schoolIdProp,
     schoolNameProp,
@@ -92,175 +162,148 @@ function EditSchoolDesktopModal({
     schoolCategoryProp,
     schoolStatusProp,
     schoolMsStatusProp,
+    schoolGreProp,
+    schoolRecommendationCountProp,
+    schoolNonThesisOptionProp,
+    schoolProfessionalMastersProp,
+    schoolDurationProp,
   ]);
 
   const handleEditSchool = async () => {
-    await axios.post("/masters/api/edit-school", {
-      id: schoolIdProp,
-      name: schoolName,
-      location: schoolLocation,
-      priority: schoolPriority,
-      tiers: schoolTier,
-      category: schoolCategory,
-      status: schoolStatus,
-      ms_status: schoolMsStatus,
-    });
-    setIsEdited(true);
-
-    notifications.show({
-      title: "School Edited Successfully!",
-      message: `${schoolName} has been edited in your tracker.`,
-      color: "teal",
-      icon: <IconCheck size={18} />,
-      autoClose: 4000,
-      styles: {
-        root: {
-          background: "rgba(255, 255, 255, 0.98)",
-          backdropFilter: "blur(10px)",
-          borderLeft: "4px solid #10b981",
-        },
-        title: {
-          background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          fontWeight: 700,
-        },
-        description: {
-          color: "#555",
-        },
-        icon: {
-          background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-        },
-      },
-    });
-
-    if (onSchoolEdited) {
-      await onSchoolEdited();
+    if (
+      !schoolName.trim() ||
+      !schoolLocation.trim() ||
+      !schoolTier ||
+      !schoolCategory ||
+      !schoolStatus ||
+      !schoolMsStatus
+    ) {
+      notifyError(
+        "Missing information",
+        "Name, location, tier, category, status and MS status are all required."
+      );
+      return;
     }
 
-    onClose();
+    setPendingAction("edit");
+    try {
+      await axios.post("/api/edit-school", {
+        id: schoolIdProp,
+        name: schoolName.trim(),
+        location: schoolLocation.trim(),
+        priority: schoolPriority,
+        tiers: schoolTier,
+        category: schoolCategory,
+        status: schoolStatus,
+        ms_status: schoolMsStatus,
+        gre,
+        // Omitted when the field is left blank: the edit API only writes the
+        // fields it receives, so the stored value stays untouched.
+        ...recommendationCountBody(recommendationCount),
+        non_thesis_option: nonThesisOption,
+        professional_masters: professionalMasters,
+        duration: duration.trim(),
+      });
+
+      notifySuccess("School updated", `${schoolName.trim()} has been saved.`);
+
+      if (onSchoolEdited) {
+        await onSchoolEdited();
+      }
+
+      onClose();
+    } catch (error) {
+      notifyError(
+        "Could not update school",
+        errorMessage(error, "Something went wrong while saving this school.")
+      );
+    } finally {
+      setPendingAction(null);
+    }
   };
 
   const handleRemoveSchool = async () => {
-    await axios.post("/masters/api/remove-school", {
-      id: schoolIdProp,
-      removal_reason: removalReason,
-    });
+    setPendingAction("remove");
+    try {
+      await axios.post("/api/remove-school", {
+        id: schoolIdProp,
+        removal_reason: removalReason,
+      });
 
-    notifications.show({
-      title: "School Removed Successfully!",
-      message: `${schoolName} has been removed from your tracker.`,
-      color: "orange",
-      icon: <IconCheck size={18} />,
-      autoClose: 4000,
-      styles: {
-        root: {
-          background: "rgba(255, 255, 255, 0.98)",
-          backdropFilter: "blur(10px)",
-          borderLeft: "4px solid #f97316",
-        },
-        title: {
-          background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          fontWeight: 700,
-        },
-        description: {
-          color: "#555",
-        },
-        icon: {
-          background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
-        },
-      },
-    });
+      notifySuccess(
+        "School removed",
+        `${schoolName} has been moved to your removed schools.`
+      );
 
-    if (onSchoolEdited) {
-      await onSchoolEdited();
+      if (onSchoolEdited) {
+        await onSchoolEdited();
+      }
+
+      closeRemoveConfirm();
+      onClose();
+    } catch (error) {
+      notifyError(
+        "Could not remove school",
+        errorMessage(error, "Something went wrong while removing this school.")
+      );
+    } finally {
+      setPendingAction(null);
     }
-
-    closeRemoveConfirm();
-    onClose();
   };
 
   const handleAddSchoolBack = async () => {
-    await axios.post("/masters/api/add-school-back", {
-      id: schoolIdProp,
-    });
+    setPendingAction("add-back");
+    try {
+      await axios.post("/api/add-school-back", { id: schoolIdProp });
 
-    notifications.show({
-      title: "School Added Back Successfully!",
-      message: `${schoolName} has been added back to your tracker.`,
-      color: "yellow",
-      icon: <IconCheck size={18} />,
-      autoClose: 4000,
-      styles: {
-        root: {
-          background: "rgba(255, 255, 255, 0.98)",
-          backdropFilter: "blur(10px)",
-          borderLeft: "4px solid #eab308",
-        },
-        title: {
-          background: "linear-gradient(135deg, #eab308 0%, #ca8a04 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          fontWeight: 700,
-        },
-        description: {
-          color: "#555",
-        },
-        icon: {
-          background: "linear-gradient(135deg, #eab308 0%, #ca8a04 100%)",
-        },
-      },
-    });
+      notifySuccess(
+        "School restored",
+        `${schoolName} is back in your active schools.`
+      );
 
-    if (onSchoolEdited) {
-      await onSchoolEdited();
+      if (onSchoolEdited) {
+        await onSchoolEdited();
+      }
+
+      closeAddBackConfirm();
+      onClose();
+    } catch (error) {
+      notifyError(
+        "Could not restore school",
+        errorMessage(error, "Something went wrong while restoring this school.")
+      );
+    } finally {
+      setPendingAction(null);
     }
-
-    closeAddBackConfirm();
-    onClose();
   };
 
   const handleDeleteForever = async () => {
-    await axios.post("/masters/api/delete-school", {
-      id: schoolIdProp,
-    });
+    setPendingAction("delete");
+    try {
+      await axios.post("/api/delete-school", { id: schoolIdProp });
 
-    notifications.show({
-      title: "School Deleted Forever!",
-      message: `${schoolName} has been permanently deleted from your tracker.`,
-      color: "red",
-      icon: <IconCheck size={18} />,
-      autoClose: 4000,
-      styles: {
-        root: {
-          background: "rgba(255, 255, 255, 0.98)",
-          backdropFilter: "blur(10px)",
-          borderLeft: "4px solid #dc2626",
-        },
-        title: {
-          background: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          fontWeight: 700,
-        },
-        description: {
-          color: "#555",
-        },
-        icon: {
-          background: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
-        },
-      },
-    });
+      notifySuccess(
+        "School deleted",
+        `${schoolName} has been permanently deleted.`
+      );
 
-    if (onSchoolEdited) {
-      await onSchoolEdited();
+      if (onSchoolEdited) {
+        await onSchoolEdited();
+      }
+
+      closeDeleteConfirm();
+      onClose();
+    } catch (error) {
+      notifyError(
+        "Could not delete school",
+        errorMessage(error, "Something went wrong while deleting this school.")
+      );
+    } finally {
+      setPendingAction(null);
     }
-
-    closeDeleteConfirm();
-    onClose();
   };
+
+  const busy = pendingAction !== null;
 
   return (
     <>
@@ -268,311 +311,297 @@ function EditSchoolDesktopModal({
         centered={isMobile}
         opened={opened}
         onClose={onClose}
-        title={
-          <span
-            style={{
-              background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              fontWeight: 700,
-              fontSize: "1.25rem",
-            }}
-          >
-            Edit a school
-          </span>
-        }
-        overlayProps={{
-          backgroundOpacity: 0.55,
-          blur: 3,
-        }}
-        styles={{
-          content: {
-            background: "rgba(255, 255, 255, 0.98)",
-            backdropFilter: "blur(10px)",
-          },
-        }}
-        radius="md"
+        title="Edit school"
+        overlayProps={overlayProps}
+        styles={modalStyles}
+        radius={8}
         size="md"
       >
-        <div className="flex flex-col gap-4">
-          <Input
-            placeholder="School Name"
+        <Stack gap="md">
+          <TextInput
+            label="School name"
+            placeholder="School name"
             size="md"
             radius="md"
             value={schoolName}
-            onChange={(e) => setSchoolName(e.target.value)}
-            styles={{
-              input: {
-                borderColor: "#e0e0e0",
-                "&:focus": {
-                  borderColor: "#10b981",
-                },
-              },
-            }}
+            onChange={(event) => setSchoolName(event.currentTarget.value)}
+            styles={inputStyles}
           />
-          <Input
-            placeholder="School Location"
+          <TextInput
+            label="Location"
+            placeholder="Location"
             size="md"
             radius="md"
             value={schoolLocation}
-            onChange={(e) => setSchoolLocation(e.target.value)}
-            styles={{
-              input: {
-                borderColor: "#e0e0e0",
-                "&:focus": {
-                  borderColor: "#10b981",
-                },
-              },
-            }}
+            onChange={(event) => setSchoolLocation(event.currentTarget.value)}
+            styles={inputStyles}
           />
-
           <Select
-            placeholder="School Priority"
-            data={["HIGH", "MEDIUM", "LOW"]}
+            label="Priority"
+            placeholder="Select a priority"
+            data={PRIORITY_OPTIONS}
             size="md"
             radius="md"
             value={schoolPriority}
-            onChange={(value) => setSchoolPriority(value ?? "LOW")}
-            styles={{
-              input: {
-                borderColor: "#e0e0e0",
-                "&:focus": {
-                  borderColor: "#10b981",
-                },
-              },
-            }}
+            onChange={(value) => setSchoolPriority(value ?? "Low")}
+            styles={inputStyles}
           />
           <Select
-            placeholder="School Tier"
-            data={["Safety", "Target", "Reach"]}
+            label="Tier"
+            placeholder="Select a tier"
+            data={TIER_OPTIONS}
             size="md"
             radius="md"
             value={schoolTier}
-            onChange={(value) => setSchoolTier(value ?? "Safety")}
-            styles={{
-              input: {
-                borderColor: "#e0e0e0",
-                "&:focus": {
-                  borderColor: "#10b981",
-                },
-              },
-            }}
+            onChange={(value) => setSchoolTier(value ?? "")}
+            styles={inputStyles}
           />
           <Select
-            placeholder="School Category"
-            data={[
-              "Around Illinois",
-              "In Chicago",
-              "In Illinois",
-              "In California",
-              "Far",
-            ]}
+            label="Location category"
+            placeholder="Select a category"
+            data={CATEGORY_OPTIONS}
             size="md"
             radius="md"
             value={schoolCategory}
-            onChange={(value) => setSchoolCategory(value ?? "In Chicago")}
-            styles={{
-              input: {
-                borderColor: "#e0e0e0",
-                "&:focus": {
-                  borderColor: "#10b981",
-                },
-              },
-            }}
+            onChange={(value) => setSchoolCategory(value ?? "")}
+            styles={inputStyles}
           />
           <Select
-            placeholder="School Status"
-            data={["Applying", "Applied", "Rejected", "Accepted", "Removed"]}
+            label="Status"
+            placeholder="Select a status"
+            data={isRemoved ? REMOVED_STATUS_OPTIONS : STATUS_OPTIONS}
             size="md"
             radius="md"
             value={schoolStatus}
             onChange={(value) => setSchoolStatus(value ?? "Applying")}
-            styles={{
-              input: {
-                borderColor: "#e0e0e0",
-                "&:focus": {
-                  borderColor: "#10b981",
-                },
-              },
-            }}
+            styles={inputStyles}
           />
           <Select
-            placeholder="School MS Status"
-            data={["Research Based", "Professional Track", "No Masters"]}
+            label="MS status"
+            placeholder="Select an MS status"
+            data={MS_STATUS_OPTIONS}
             size="md"
             radius="md"
             value={schoolMsStatus}
-            onChange={(value) => setSchoolMsStatus(value ?? "Research Based")}
-            styles={{
-              input: {
-                borderColor: "#e0e0e0",
-                "&:focus": {
-                  borderColor: "#10b981",
-                },
-              },
-            }}
+            onChange={(value) => setSchoolMsStatus(value ?? "")}
+            styles={inputStyles}
+          />
+          <Select
+            label="GRE"
+            placeholder="Select GRE requirement"
+            data={GRE_OPTIONS}
+            size="md"
+            radius="md"
+            value={gre}
+            onChange={(value) => setGre(value ?? "Not Required")}
+            styles={inputStyles}
+          />
+          <NumberInput
+            label="Recommendation letters"
+            placeholder="3"
+            min={0}
+            max={10}
+            clampBehavior="strict"
+            allowDecimal={false}
+            allowNegative={false}
+            size="md"
+            radius="md"
+            value={recommendationCount}
+            onChange={setRecommendationCount}
+            styles={inputStyles}
+          />
+          <TextInput
+            label="Duration"
+            placeholder='e.g. "1.5 years", "2 years", "4Q + Internship"'
+            size="md"
+            radius="md"
+            value={duration}
+            onChange={(event) => setDuration(event.currentTarget.value)}
+            styles={inputStyles}
+          />
+          <Checkbox
+            label="Non-thesis option"
+            color={ui.ink}
+            checked={nonThesisOption}
+            onChange={(event) => setNonThesisOption(event.currentTarget.checked)}
+            styles={{ label: { color: ui.body } }}
+          />
+          <Checkbox
+            label="Professional masters"
+            color={ui.ink}
+            checked={professionalMasters}
+            onChange={(event) =>
+              setProfessionalMasters(event.currentTarget.checked)
+            }
+            styles={{ label: { color: ui.body } }}
           />
 
-          <Button
-            onClick={handleEditSchool}
-            variant="gradient"
-            gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
-            size="md"
-            radius="md"
-            style={{
-              fontWeight: 600,
-              boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
-            }}
-          >
-            Edit School
-          </Button>
-          {schoolRemovedProp ? (
+          <Group justify="space-between" gap="sm" mt="xs">
             <Button
-              onClick={openAddBackConfirm}
-              variant="gradient"
-              gradient={{ from: "#eab308", to: "#ca8a04", deg: 135 }}
               size="md"
-              radius="md"
-              style={{
-                fontWeight: 600,
-                boxShadow: "0 4px 12px rgba(234, 179, 8, 0.3)",
-              }}
+              variant="default"
+              style={dangerButtonStyle}
+              onClick={openDeleteConfirm}
+              disabled={busy}
             >
-              Add School Back
+              Delete forever
             </Button>
-          ) : (
-            <Button
-              onClick={openRemoveConfirm}
-              variant="gradient"
-              gradient={{ from: "#f97316", to: "#ea580c", deg: 135 }}
-              size="md"
-              radius="md"
-              style={{
-                fontWeight: 600,
-                boxShadow: "0 4px 12px rgba(249, 115, 22, 0.3)",
-              }}
-            >
-              Remove School
-            </Button>
-          )}
-          <Button
-            onClick={openDeleteConfirm}
-            variant="gradient"
-            gradient={{ from: "#dc2626", to: "#991b1b", deg: 135 }}
-            size="md"
-            radius="md"
-            style={{
-              fontWeight: 600,
-              boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)",
-            }}
-          >
-            Delete Forever
-          </Button>
-        </div>
+            <Group gap="sm">
+              {isRemoved ? (
+                <Button
+                  size="md"
+                  variant="default"
+                  style={secondaryButtonStyle}
+                  onClick={openAddBackConfirm}
+                  disabled={busy}
+                >
+                  Add back
+                </Button>
+              ) : (
+                <Button
+                  size="md"
+                  variant="default"
+                  style={secondaryButtonStyle}
+                  onClick={openRemoveConfirm}
+                  disabled={busy}
+                >
+                  Remove
+                </Button>
+              )}
+              <Button
+                size="md"
+                style={primaryButtonStyle}
+                onClick={handleEditSchool}
+                loading={pendingAction === "edit"}
+                disabled={busy && pendingAction !== "edit"}
+              >
+                Save changes
+              </Button>
+            </Group>
+          </Group>
+        </Stack>
       </Modal>
+
       <Modal
+        centered
         opened={removeConfirmOpened}
         onClose={closeRemoveConfirm}
-        title="Remove School"
+        title="Remove school"
+        overlayProps={overlayProps}
+        styles={modalStyles}
+        radius={8}
       >
-        <div className="flex flex-col gap-4">
-          <Text>Are you sure you want to remove {schoolName}?</Text>
-          <Input
-            placeholder="Enter removal reason"
+        <Stack gap="md">
+          <Text size="sm" c={ui.body}>
+            Remove {schoolName} from your active schools? You can add it back
+            later.
+          </Text>
+          <TextInput
+            label="Removal reason"
+            placeholder="Why are you removing it?"
             size="md"
             radius="md"
             value={removalReason}
-            onChange={(e) => setRemovalReason(e.target.value)}
-            required
-            styles={{
-              input: {
-                borderColor: "#e0e0e0",
-                "&:focus": {
-                  borderColor: "#f97316",
-                },
-              },
-            }}
+            onChange={(event) => setRemovalReason(event.currentTarget.value)}
+            styles={inputStyles}
           />
-          <Button
-            onClick={handleRemoveSchool}
-            variant="gradient"
-            gradient={{ from: "#f97316", to: "#ea580c", deg: 135 }}
-            size="md"
-            radius="md"
-            disabled={!removalReason.trim()}
-          >
-            Yes, Remove School
-          </Button>
-          <Button
-            onClick={closeRemoveConfirm}
-            variant="gradient"
-            gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
-            size="md"
-            radius="md"
-          >
-            No, Cancel
-          </Button>
-        </div>
+          <Group justify="flex-end" gap="sm">
+            <Button
+              size="md"
+              variant="default"
+              style={secondaryButtonStyle}
+              onClick={closeRemoveConfirm}
+              disabled={busy}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="md"
+              style={primaryButtonStyle}
+              onClick={handleRemoveSchool}
+              disabled={!removalReason.trim() || busy}
+              loading={pendingAction === "remove"}
+            >
+              Remove school
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
+
       <Modal
+        centered
         opened={deleteConfirmOpened}
         onClose={closeDeleteConfirm}
-        title="Delete School Forever"
+        title="Delete school forever"
+        overlayProps={overlayProps}
+        styles={modalStyles}
+        radius={8}
       >
-        <div className="flex flex-col gap-4">
-          <Text>⚠️ WARNING: This action cannot be undone!</Text>
-          <Text>
-            Are you absolutely sure you want to permanently delete {schoolName}?
+        <Stack gap="md">
+          <Text size="sm" c={ui.ink} fw={600}>
+            This cannot be undone.
           </Text>
-          <Button
-            onClick={handleDeleteForever}
-            variant="gradient"
-            gradient={{ from: "#dc2626", to: "#991b1b", deg: 135 }}
-            size="md"
-            radius="md"
-          >
-            Yes, Delete Forever
-          </Button>
-          <Button
-            onClick={closeDeleteConfirm}
-            variant="gradient"
-            gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
-            size="md"
-            radius="md"
-          >
-            No, Cancel
-          </Button>
-        </div>
+          <Text size="sm" c={ui.body}>
+            {schoolName} will be permanently deleted from your tracker.
+          </Text>
+          <Group justify="flex-end" gap="sm">
+            <Button
+              size="md"
+              variant="default"
+              style={secondaryButtonStyle}
+              onClick={closeDeleteConfirm}
+              disabled={busy}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="md"
+              variant="default"
+              style={dangerButtonStyle}
+              onClick={handleDeleteForever}
+              loading={pendingAction === "delete"}
+              disabled={busy && pendingAction !== "delete"}
+            >
+              Delete forever
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
+
       <Modal
+        centered
         opened={addBackConfirmOpened}
         onClose={closeAddBackConfirm}
-        title="Add School Back"
+        title="Add school back"
+        overlayProps={overlayProps}
+        styles={modalStyles}
+        radius={8}
       >
-        <div className="flex flex-col gap-4">
-          <Text>
-            Are you sure you want to add {schoolName} back to your active
-            schools?
+        <Stack gap="md">
+          <Text size="sm" c={ui.body}>
+            Move {schoolName} back into your active schools?
           </Text>
-          <Button
-            onClick={handleAddSchoolBack}
-            variant="gradient"
-            gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
-            size="md"
-            radius="md"
-          >
-            Yes, Add School Back
-          </Button>
-          <Button
-            onClick={closeAddBackConfirm}
-            variant="gradient"
-            gradient={{ from: "#f97316", to: "#ea580c", deg: 135 }}
-            size="md"
-            radius="md"
-          >
-            No, Cancel
-          </Button>
-        </div>
+          <Group justify="flex-end" gap="sm">
+            <Button
+              size="md"
+              variant="default"
+              style={secondaryButtonStyle}
+              onClick={closeAddBackConfirm}
+              disabled={busy}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="md"
+              style={primaryButtonStyle}
+              onClick={handleAddSchoolBack}
+              loading={pendingAction === "add-back"}
+              disabled={busy && pendingAction !== "add-back"}
+            >
+              Add back
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </>
   );

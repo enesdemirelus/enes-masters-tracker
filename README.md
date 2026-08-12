@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Masters Tracker
 
-## Getting Started
+A personal tracker for master's program applications: schools, tiers, deadlines,
+and status, with a desktop and mobile view.
 
-First, run the development server:
+## Stack
+
+- [Next.js 15](https://nextjs.org) (App Router)
+- [Mantine v8](https://mantine.dev) for UI
+- [Prisma](https://www.prisma.io) as the ORM
+- [Supabase Postgres](https://supabase.com) as the database
+
+## Environment variables
+
+Create a `.env` file with:
+
+- `DATABASE_URL` — pooled Postgres connection string (used at runtime)
+- `DIRECT_URL` — direct Postgres connection string (used for migrations)
+- `LOGO_DEV_API_KEY` — API key for [logo.dev](https://logo.dev), used to fetch school logos
+
+## Running locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the tracker.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Schema changes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The Prisma schema lives at `prisma/schema.prisma`. After editing it, push the
+changes to the database:
 
-## Learn More
+```bash
+npx prisma db push
+```
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This also regenerates the Prisma Client (output at `app/generated/prisma`).

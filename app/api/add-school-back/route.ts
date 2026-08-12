@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const school = await prisma.schools.update({
       data: {
         removed: false,
-        removal_reason: null,
+        removal_reason: "",
         status: Status.APPLYING,
       },
       where: { id }

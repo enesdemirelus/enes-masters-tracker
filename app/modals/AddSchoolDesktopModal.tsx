@@ -1,15 +1,49 @@
-import React, { useState } from "react";
-import { Button, Input, Modal, Select } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
-import { IconCheck } from "@tabler/icons-react";
+"use client";
+
+import { useState } from "react";
+import {
+  Button,
+  Checkbox,
+  Group,
+  Modal,
+  NumberInput,
+  Select,
+  Stack,
+  TextInput,
+} from "@mantine/core";
 import axios from "axios";
+import {
+  errorMessage,
+  inputStyles,
+  modalStyles,
+  notifyError,
+  notifySuccess,
+  overlayProps,
+  primaryButtonStyle,
+  recommendationCountBody,
+  secondaryButtonStyle,
+  ui,
+} from "./modalTheme";
 
 interface AddSchoolDesktopModalProps {
   opened: boolean;
   onClose: () => void;
-  onSchoolAdded?: () => void;
+  onSchoolAdded?: () => void | Promise<void>;
   isMobile?: boolean;
 }
+
+const PRIORITY_OPTIONS = ["High", "Medium", "Low"];
+const TIER_OPTIONS = ["Safety", "Target", "Reach", "Not Sure"];
+const CATEGORY_OPTIONS = [
+  "Around Illinois",
+  "In Chicago",
+  "In Illinois",
+  "In California",
+  "Far",
+];
+const STATUS_OPTIONS = ["Applying", "Applied", "Rejected", "Accepted"];
+const MS_STATUS_OPTIONS = ["Research Based", "Professional Track", "No Masters"];
+const GRE_OPTIONS = ["Not Required", "Optional", "Required"];
 
 function AddSchoolDesktopModal({
   opened,
@@ -19,227 +53,241 @@ function AddSchoolDesktopModal({
 }: AddSchoolDesktopModalProps) {
   const [schoolName, setSchoolName] = useState("");
   const [schoolLocation, setSchoolLocation] = useState("");
-  const [schoolPriority, setSchoolPriority] = useState("");
+  const [schoolPriority, setSchoolPriority] = useState("Low");
   const [schoolTier, setSchoolTier] = useState("");
   const [schoolCategory, setSchoolCategory] = useState("");
-  const [schoolStatus, setSchoolStatus] = useState("");
+  const [schoolStatus, setSchoolStatus] = useState("Applying");
   const [schoolMsStatus, setSchoolMsStatus] = useState("");
-  const [isAdded, setIsAdded] = useState(false);
+  const [gre, setGre] = useState("Not Required");
+  const [recommendationCount, setRecommendationCount] = useState<
+    number | string
+  >(3);
+  const [nonThesisOption, setNonThesisOption] = useState(false);
+  const [professionalMasters, setProfessionalMasters] = useState(false);
+  const [duration, setDuration] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleAddSchool = async () => {
-    await axios.post("/masters/api/add-school", {
-      name: schoolName,
-      location: schoolLocation,
-      priority: schoolPriority,
-      tiers: schoolTier,
-      category: schoolCategory,
-      status: schoolStatus,
-      ms_status: schoolMsStatus,
-    });
-    setIsAdded(true);
-
-    notifications.show({
-      title: "School Added Successfully!",
-      message: `${schoolName} has been added to your tracker.`,
-      color: "teal",
-      icon: <IconCheck size={18} />,
-      autoClose: 4000,
-      styles: {
-        root: {
-          background: "rgba(255, 255, 255, 0.98)",
-          backdropFilter: "blur(10px)",
-          borderLeft: "4px solid #10b981",
-        },
-        title: {
-          background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          fontWeight: 700,
-        },
-        description: {
-          color: "#555",
-        },
-        icon: {
-          background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-        },
-      },
-    });
-
-    if (onSchoolAdded) {
-      await onSchoolAdded();
-    }
-
+  const resetForm = () => {
     setSchoolName("");
     setSchoolLocation("");
-    setSchoolPriority("");
+    setSchoolPriority("Low");
     setSchoolTier("");
     setSchoolCategory("");
-    setSchoolStatus("");
+    setSchoolStatus("Applying");
     setSchoolMsStatus("");
-    onClose();
+    setGre("Not Required");
+    setRecommendationCount(3);
+    setNonThesisOption(false);
+    setProfessionalMasters(false);
+    setDuration("");
   };
+
+  const handleAddSchool = async () => {
+    if (
+      !schoolName.trim() ||
+      !schoolLocation.trim() ||
+      !schoolTier ||
+      !schoolCategory ||
+      !schoolStatus ||
+      !schoolMsStatus
+    ) {
+      notifyError(
+        "Missing information",
+        "Name, location, tier, category, status and MS status are all required."
+      );
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await axios.post("/api/add-school", {
+        name: schoolName.trim(),
+        location: schoolLocation.trim(),
+        priority: schoolPriority,
+        tiers: schoolTier,
+        category: schoolCategory,
+        status: schoolStatus,
+        ms_status: schoolMsStatus,
+        gre,
+        // Omitted when the field is left blank so the schema default (3) wins.
+        ...recommendationCountBody(recommendationCount),
+        non_thesis_option: nonThesisOption,
+        professional_masters: professionalMasters,
+        duration: duration.trim(),
+      });
+
+      notifySuccess(
+        "School added",
+        `${schoolName.trim()} has been added to your tracker.`
+      );
+
+      if (onSchoolAdded) {
+        await onSchoolAdded();
+      }
+
+      resetForm();
+      onClose();
+    } catch (error) {
+      // Keep the modal open so the entered values are not lost.
+      notifyError(
+        "Could not add school",
+        errorMessage(error, "Something went wrong while saving this school.")
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <Modal
       centered={isMobile}
       opened={opened}
       onClose={onClose}
-      title={
-        <span
-          style={{
-            background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            fontWeight: 700,
-            fontSize: "1.25rem",
-          }}
-        >
-          Add a new school
-        </span>
-      }
-      overlayProps={{
-        backgroundOpacity: 0.55,
-        blur: 3,
-      }}
-      styles={{
-        content: {
-          background: "rgba(255, 255, 255, 0.98)",
-          backdropFilter: "blur(10px)",
-        },
-      }}
-      radius="md"
+      title="Add a new school"
+      overlayProps={overlayProps}
+      styles={modalStyles}
+      radius={8}
       size="md"
     >
-      <div className="flex flex-col gap-4">
-        <Input
-          placeholder="School Name"
+      <Stack gap="md">
+        <TextInput
+          label="School name"
+          placeholder="University of Illinois"
           size="md"
           radius="md"
           value={schoolName}
-          onChange={(e) => setSchoolName(e.target.value)}
-          styles={{
-            input: {
-              borderColor: "#e0e0e0",
-              "&:focus": {
-                borderColor: "#10b981",
-              },
-            },
-          }}
+          onChange={(event) => setSchoolName(event.currentTarget.value)}
+          styles={inputStyles}
         />
-        <Input
-          placeholder="School Location"
+        <TextInput
+          label="Location"
+          placeholder="Urbana, IL"
           size="md"
           radius="md"
           value={schoolLocation}
-          onChange={(e) => setSchoolLocation(e.target.value)}
-          styles={{
-            input: {
-              borderColor: "#e0e0e0",
-              "&:focus": {
-                borderColor: "#10b981",
-              },
-            },
-          }}
+          onChange={(event) => setSchoolLocation(event.currentTarget.value)}
+          styles={inputStyles}
         />
         <Select
-          placeholder="School Priority"
-          data={["HIGH", "MEDIUM", "LOW"]}
+          label="Priority"
+          placeholder="Select a priority"
+          data={PRIORITY_OPTIONS}
           size="md"
           radius="md"
           value={schoolPriority}
-          onChange={(value) => setSchoolPriority(value ?? "LOW")}
-          styles={{
-            input: {
-              borderColor: "#e0e0e0",
-              "&:focus": {
-                borderColor: "#10b981",
-              },
-            },
-          }}
+          onChange={(value) => setSchoolPriority(value ?? "Low")}
+          styles={inputStyles}
         />
         <Select
-          placeholder="School Tier"
-          data={["SAFETY", "TARGET", "REACH"]}
+          label="Tier"
+          placeholder="Select a tier"
+          data={TIER_OPTIONS}
           size="md"
           radius="md"
           value={schoolTier}
-          onChange={(value) => setSchoolTier(value ?? "SAFETY")}
-          styles={{
-            input: {
-              borderColor: "#e0e0e0",
-              "&:focus": {
-                borderColor: "#10b981",
-              },
-            },
-          }}
+          onChange={(value) => setSchoolTier(value ?? "")}
+          styles={inputStyles}
         />
         <Select
-          placeholder="School Category"
-          data={[
-            "AROUND_ILLINOIS",
-            "IN_CHICAGO",
-            "IN_ILLINOIS",
-            "IN_CALIFORNIA",
-            "FAR",
-          ]}
+          label="Location category"
+          placeholder="Select a category"
+          data={CATEGORY_OPTIONS}
           size="md"
           radius="md"
           value={schoolCategory}
-          onChange={(value) => setSchoolCategory(value ?? "IN_CHICAGO")}
-          styles={{
-            input: {
-              borderColor: "#e0e0e0",
-              "&:focus": {
-                borderColor: "#10b981",
-              },
-            },
-          }}
+          onChange={(value) => setSchoolCategory(value ?? "")}
+          styles={inputStyles}
         />
         <Select
-          placeholder="School Status"
-          data={["APPLYING", "APPLIED", "REJECTED", "ACCEPTED"]}
+          label="Status"
+          placeholder="Select a status"
+          data={STATUS_OPTIONS}
           size="md"
           radius="md"
           value={schoolStatus}
-          onChange={(value) => setSchoolStatus(value ?? "APPLYING")}
-          styles={{
-            input: {
-              borderColor: "#e0e0e0",
-              "&:focus": {
-                borderColor: "#10b981",
-              },
-            },
-          }}
+          onChange={(value) => setSchoolStatus(value ?? "Applying")}
+          styles={inputStyles}
         />
         <Select
-          placeholder="School MS Status"
-          data={["RESEARCH_BASED", "PROFESSIONAL_TRACK", "NO_MASTERS"]}
+          label="MS status"
+          placeholder="Select an MS status"
+          data={MS_STATUS_OPTIONS}
           size="md"
           radius="md"
           value={schoolMsStatus}
-          onChange={(value) => setSchoolMsStatus(value ?? "RESEARCH_BASED")}
-          styles={{
-            input: {
-              borderColor: "#e0e0e0",
-              "&:focus": {
-                borderColor: "#10b981",
-              },
-            },
-          }}
+          onChange={(value) => setSchoolMsStatus(value ?? "")}
+          styles={inputStyles}
         />
-        <Button
-          onClick={handleAddSchool}
-          variant="gradient"
-          gradient={{ from: "#10b981", to: "#059669", deg: 135 }}
+        <Select
+          label="GRE"
+          placeholder="Select GRE requirement"
+          data={GRE_OPTIONS}
           size="md"
           radius="md"
-          style={{
-            fontWeight: 600,
-            boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
-          }}
-        >
-          Add School
-        </Button>
-      </div>
+          value={gre}
+          onChange={(value) => setGre(value ?? "Not Required")}
+          styles={inputStyles}
+        />
+        <NumberInput
+          label="Recommendation letters"
+          placeholder="3"
+          min={0}
+          max={10}
+          clampBehavior="strict"
+          allowDecimal={false}
+          allowNegative={false}
+          size="md"
+          radius="md"
+          value={recommendationCount}
+          onChange={setRecommendationCount}
+          styles={inputStyles}
+        />
+        <TextInput
+          label="Duration"
+          placeholder='e.g. "1.5 years", "2 years", "4Q + Internship"'
+          size="md"
+          radius="md"
+          value={duration}
+          onChange={(event) => setDuration(event.currentTarget.value)}
+          styles={inputStyles}
+        />
+        <Checkbox
+          label="Non-thesis option"
+          color={ui.ink}
+          checked={nonThesisOption}
+          onChange={(event) => setNonThesisOption(event.currentTarget.checked)}
+          styles={{ label: { color: ui.body } }}
+        />
+        <Checkbox
+          label="Professional masters"
+          color={ui.ink}
+          checked={professionalMasters}
+          onChange={(event) =>
+            setProfessionalMasters(event.currentTarget.checked)
+          }
+          styles={{ label: { color: ui.body } }}
+        />
+
+        <Group justify="flex-end" gap="sm" mt="xs">
+          <Button
+            size="md"
+            variant="default"
+            style={secondaryButtonStyle}
+            onClick={onClose}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            size="md"
+            style={primaryButtonStyle}
+            onClick={handleAddSchool}
+            loading={isSubmitting}
+          >
+            Add school
+          </Button>
+        </Group>
+      </Stack>
     </Modal>
   );
 }

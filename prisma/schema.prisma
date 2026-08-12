@@ -9,24 +9,24 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model Password {
-  id       String @id @default(cuid())
-  password String @unique
-}
-
 model Schools {
-  id              String   @id @default(cuid())
-  name            String
-  location        String
-  tiers           Tiers
-  category        Category
-  status          Status   @default(APPLYING)
-  priority        Priority @default(LOW)
-  ms_status       MsStatus @default(RESEARCH_BASED)
-  logo            String   @default("")
-  removal_reason  String?  @default("")
-  removed         Boolean  @default(false)
-  more_info_notes String?  @default("")
+  id                   String    @id @default(cuid())
+  name                 String
+  location             String
+  tiers                Tiers
+  category             Category
+  status               Status    @default(APPLYING)
+  priority             Priority  @default(LOW)
+  ms_status            MsStatus  @default(RESEARCH_BASED)
+  logo                 String    @default("")
+  removal_reason       String?   @default("")
+  removed              Boolean   @default(false)
+  more_info_notes      String?   @default("")
+  gre                  GreStatus @default(NOT_REQUIRED)
+  recommendation_count Int       @default(3)
+  non_thesis_option    Boolean   @default(false)
+  professional_masters Boolean   @default(false)
+  duration             String?   @default("")
 }
 
 enum Priority {
@@ -62,4 +62,10 @@ enum Status {
   REJECTED
   ACCEPTED
   REMOVED
+}
+
+enum GreStatus {
+  REQUIRED
+  OPTIONAL
+  NOT_REQUIRED
 }
