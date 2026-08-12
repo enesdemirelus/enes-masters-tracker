@@ -3,19 +3,38 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ActionIcon, Button, Center, Drawer, Loader } from "@mantine/core";
+import {
+  ActionIcon,
+  Button,
+  Center,
+  Drawer,
+  Loader,
+  SegmentedControl,
+  useMantineColorScheme,
+  VisuallyHidden,
+  type MantineColorScheme,
+} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconArrowsLeftRight,
   IconBuildingBank,
   IconCalendarDue,
+  IconDeviceDesktop,
   IconDownload,
   IconLayoutDashboard,
   IconMenu2,
+  IconMoon,
+  IconSun,
   IconUsers,
 } from "@tabler/icons-react";
 import { useIsMobile } from "@/lib/use-mobile";
-import { errorMessage, notifyError, secondaryButtonStyle, ui } from "@/app/theme";
+import {
+  errorMessage,
+  notifyError,
+  overlayProps,
+  secondaryButtonStyle,
+  ui,
+} from "@/app/theme";
 
 const SIDEBAR_WIDTH = 230;
 const TOPBAR_HEIGHT = 56;
@@ -143,6 +162,59 @@ function ExportButton({ onDone }: { onDone?: () => void }) {
   );
 }
 
+/**
+ * Light / dark / auto, as a three-state control rather than a two-state switch:
+ * "follow the OS" is a real preference, and a switch can only ever report the
+ * scheme it happens to be resolving to, which makes it impossible to tell a
+ * deliberate choice from a borrowed one.
+ *
+ * Labels are icon-only because the sidebar is 230px wide; the text is still in
+ * the DOM for screen readers.
+ */
+const SCHEME_OPTIONS = [
+  { value: "light", Icon: IconSun, label: "Light" },
+  { value: "dark", Icon: IconMoon, label: "Dark" },
+  { value: "auto", Icon: IconDeviceDesktop, label: "Match system" },
+] as const;
+
+function ColorSchemeToggle() {
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
+
+  return (
+    <SegmentedControl
+      fullWidth
+      size="xs"
+      radius={6}
+      // Track, indicator and label geometry all live in the shared
+      // `.app-segmented` class (see globals.css) — that is what keeps the
+      // selected indicator centred here and on the schools controls alike.
+      className="app-segmented"
+      aria-label="Color scheme"
+      value={colorScheme}
+      onChange={(value) => setColorScheme(value as MantineColorScheme)}
+      data={SCHEME_OPTIONS.map(({ value, Icon, label }) => ({
+        value,
+        label: (
+          <Center>
+            <Icon size={15} stroke={1.5} />
+            <VisuallyHidden>{label}</VisuallyHidden>
+          </Center>
+        ),
+      }))}
+    />
+  );
+}
+
+/** Pinned block at the bottom of both the sidebar and the mobile drawer. */
+function ShellFooter({ onExported }: { onExported?: () => void }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <ColorSchemeToggle />
+      <ExportButton onDone={onExported} />
+    </div>
+  );
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
   const pathname = usePathname();
@@ -168,7 +240,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <div style={{ background: ui.canvas, minHeight: "100vh" }}>
         <div style={{ maxWidth: 1240, margin: "0 auto", padding: 32 }}>
           <Center style={{ minHeight: "60vh" }}>
-            <Loader color="dark" size="sm" />
+            <Loader color={ui.emphasis} size="sm" />
           </Center>
         </div>
       </div>
@@ -213,7 +285,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           size={260}
           withCloseButton
           title={<Wordmark />}
-          overlayProps={{ backgroundOpacity: 0.4, blur: 0 }}
+          overlayProps={overlayProps}
           styles={{
             content: { background: ui.surface },
             header: {
@@ -225,7 +297,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         >
           <NavLinks onNavigate={closeDrawer} />
           <div style={{ marginTop: 20 }}>
-            <ExportButton onDone={closeDrawer} />
+            <ShellFooter onExported={closeDrawer} />
           </div>
         </Drawer>
 
@@ -256,7 +328,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <NavLinks />
         <div style={{ marginTop: "auto" }}>
-          <ExportButton />
+          <ShellFooter />
         </div>
       </aside>
 

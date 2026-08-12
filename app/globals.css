@@ -1,1 +1,203 @@
 @import "tailwindcss";
+
+/* --------------------------------------------------------------------------
+   Design tokens
+   --------------------------------------------------------------------------
+
+   Every colour in the app resolves to one of these custom properties; the
+   `ui` object in `app/theme.ts` is a typed mirror of this list and is the only
+   thing components are allowed to import. Adding a colour means adding a token
+   here (both palettes) *and* a key in `ui` — never a raw hex in a component.
+
+   Mantine v8 stamps `data-mantine-color-scheme="light" | "dark"` on <html>
+   (see `ColorSchemeScript` in `app/layout.tsx`), so the dark block below is a
+   plain attribute override. `color-scheme` is declared in each block so native
+   UI — the `<input type="date">` picker, scrollbars, form autofill — repaints
+   with the rest of the app.
+
+   Light values are the original flat-monochrome palette, unchanged.
+   Dark values are the same system inverted: calm greys rather than pure black,
+   separation carried by borders instead of shadows, and brighter semantic
+   accents so they still clear contrast on a dark surface.
+   -------------------------------------------------------------------------- */
+
+:root,
+[data-mantine-color-scheme="light"] {
+  color-scheme: light;
+
+  /* Structure */
+  --app-canvas: #fafafa;
+  --app-surface: #ffffff;
+  --app-border: #e5e5e5;
+  --app-input-border: #d4d4d4;
+  --app-subtle: #f5f5f5;
+  /* Recessed groove behind a SegmentedControl indicator. Splits from
+     `--app-subtle` in dark, where a hover tint has to sit *above* the surface
+     while a groove has to sit below it. */
+  --app-track: #f5f5f5;
+
+  /* Text */
+  --app-ink: #171717;
+  --app-body: #525252;
+  --app-muted: #a3a3a3;
+
+  /* Ink used as a fill (primary button, checkbox box, progress meter). */
+  --app-ink-hover: #404040;
+  --app-on-ink: #ffffff;
+
+  /* Strong inverted fill: ACCEPTED badge, tooltips, loaders. The light value
+     matches Mantine's `dark` filled variant so nothing shifted when these
+     moved off Mantine's palette. */
+  --app-emphasis: #2e2e2e;
+  --app-on-emphasis: #ffffff;
+
+  /* Plate behind a remote logo image. Most marks logo.dev returns are dark on
+     transparent, so this stays light in both schemes rather than tracking
+     `--app-surface` and swallowing them. */
+  --app-logo-plate: #ffffff;
+
+  /* Semantic accents — used as text/border colours on a surface. */
+  --app-success: #16a34a;
+  --app-danger: #dc2626;
+  --app-warning: #d97706;
+
+  /* Destructive button, which needs a fill dark enough for white label text;
+     it therefore does not track `--app-danger`, which brightens in dark mode. */
+  --app-danger-bg: #dc2626;
+  --app-danger-hover: #b91c1c;
+  --app-on-danger: #ffffff;
+
+  --app-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --app-overlay: rgba(0, 0, 0, 0.4);
+
+  /* Mantine paints its own surfaces (Select/Combobox dropdowns, Popover) from
+     this variable rather than from any token of ours, so it is pointed at the
+     card surface — otherwise those float in Mantine's stock white/dark-7. */
+  --mantine-color-body: var(--app-surface);
+}
+
+[data-mantine-color-scheme="dark"] {
+  color-scheme: dark;
+
+  --app-canvas: #101012;
+  --app-surface: #18181b;
+  --app-border: #27272a;
+  --app-input-border: #3f3f46;
+  --app-subtle: #202023;
+  --app-track: #101012;
+
+  --app-ink: #f4f4f5;
+  --app-body: #a1a1aa;
+  --app-muted: #71717a;
+
+  --app-ink-hover: #d4d4d8;
+  --app-on-ink: #18181b;
+
+  --app-emphasis: #f4f4f5;
+  --app-on-emphasis: #18181b;
+
+  /* Dimmed rather than white so a 40px logo chip is not the brightest thing on
+     a dark page. */
+  --app-logo-plate: #e4e4e7;
+
+  --app-success: #4ade80;
+  --app-danger: #f87171;
+  --app-warning: #fbbf24;
+
+  --app-danger-bg: #dc2626;
+  --app-danger-hover: #ef4444;
+  --app-on-danger: #ffffff;
+
+  /* A drop shadow reads as nothing on a dark canvas; borders do the separating,
+     so this only has to avoid printing a light halo. */
+  --app-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  /* The dark canvas is already close to black, so the scrim has to go further
+     before the page behind a modal reads as pushed back. */
+  --app-overlay: rgba(0, 0, 0, 0.65);
+
+  --mantine-color-body: var(--app-surface);
+}
+
+/* The shell paints its own canvas, but the document behind it shows through
+   overscroll bounce — Mantine's default body background is a different grey in
+   dark mode, which flashes there. */
+html {
+  background: var(--app-canvas);
+}
+
+html body {
+  background: var(--app-canvas);
+}
+
+/* --------------------------------------------------------------------------
+   SegmentedControl skin (`.app-segmented`)
+   --------------------------------------------------------------------------
+
+   Every SegmentedControl in the app (schools sort, schools view switcher,
+   sidebar colour scheme) wears this one class instead of repeating a `styles`
+   object, because the selected-indicator alignment depends on rules that have
+   to hold across *all* of them.
+
+   Why the fixed label height: Mantine's FloatingIndicator sizes and positions
+   the pill from the *active label's* box, while the root is a stretch flex
+   container whose height is the *tallest* label. Left to content, a label's
+   height is whatever its line box happens to be (`line-height: 1.55` on a 12px
+   label = 18.59px — fractional), or, for an icon label, whatever a block-level
+   node nested in the inline `innerLabel` span resolves to. The moment two
+   segments disagree — icon next to text, a heavier label, a late webfont swap,
+   a wrapped label — the row grows to the tallest one while the pill keeps the
+   active (shorter) label's height and stays pinned to the top of the row: the
+   indicator visibly sits high. Pinning every label to the same integral height
+   makes all segments identical by construction, so the 3px gap (1px border +
+   2px padding) is the same above and below, and every box height is a whole
+   number of pixels rather than a fraction that snaps unevenly at non-integral
+   device-pixel ratios.
+
+   Selectors lean on Mantine's stable `mantine-SegmentedControl-*` class names.
+   The root rule doubles `.app-segmented` because this file is imported before
+   `@mantine/core/styles.css`, so a single class would lose the tie to
+   Mantine's own single-class rules.
+   -------------------------------------------------------------------------- */
+
+.app-segmented.app-segmented {
+  background: var(--app-track);
+  border: 1px solid var(--app-border);
+  padding: 2px;
+  /* Belt and braces: should a label ever end up shorter than the row, centre
+     it rather than letting the stretch default strand it at the top. */
+  align-items: center;
+}
+
+.app-segmented .mantine-SegmentedControl-indicator {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  box-shadow: none;
+}
+
+.app-segmented .mantine-SegmentedControl-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  padding: 0 10px;
+  line-height: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--app-body);
+}
+
+.app-segmented .mantine-SegmentedControl-label[data-active] {
+  color: var(--app-ink);
+}
+
+.app-segmented .mantine-SegmentedControl-label[data-disabled] {
+  color: var(--app-muted);
+}
+
+/* Mantine's own hover rule is a single class, so the block above would win and
+   swallow the hover feedback if it were not restated here. */
+@media (hover: hover) {
+  .app-segmented .mantine-SegmentedControl-label:not([data-active]):hover {
+    color: var(--app-ink);
+  }
+}

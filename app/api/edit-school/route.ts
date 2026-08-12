@@ -1,19 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/prisma/client";
 import {
-  Category,
+  ApplyOption,
   GreStatus,
-  MsStatus,
   Priority,
   Status,
-  Tiers,
 } from "@/app/generated/prisma";
 
-// Accepts both raw enum values ("NOT_SURE") and display strings ("Not Sure")
-// and normalizes them to the Prisma enum form.
+// Accepts both raw enum values ("NON_THESIS") and display strings
+// ("Non-Thesis") and normalizes them to the Prisma enum form.
 function normalizeEnum(value: unknown): string {
   if (typeof value !== "string") return "";
-  return value.trim().toUpperCase().replace(/\s+/g, "_");
+  return value.trim().toUpperCase().replace(/[\s-]+/g, "_");
 }
 
 function parseEnum<T extends Record<string, string>>(
@@ -48,19 +46,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const tiers = parseEnum(Tiers, body.tiers);
-    const category = parseEnum(Category, body.category);
     const status = parseEnum(Status, body.status);
-    const ms_status = parseEnum(MsStatus, body.ms_status);
 
-    if (!tiers || !category || !status || !ms_status) {
+    if (!status) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    const priority = parseEnum(Priority, body.priority) ?? Priority.LOW;
+    const priority = parseEnum(Priority, body.priority);
 
     const existing = await prisma.schools.findUnique({
       where: { id },
@@ -74,30 +69,31 @@ export async function POST(request: Request) {
     const schoolData: {
       name: string;
       location: string;
-      priority: Priority;
-      tiers: Tiers;
-      category: Category;
       status: Status;
-      ms_status: MsStatus;
       removed: boolean;
+      priority?: Priority;
       gre?: GreStatus;
       recommendation_count?: number;
       non_thesis_option?: boolean;
       professional_masters?: boolean;
       duration?: string;
+      apply_option?: ApplyOption;
+      apply_option_note?: string;
       applied_date?: Date;
       decision_date?: Date;
     } = {
       name,
       location,
-      priority,
-      tiers,
-      category,
       status,
-      ms_status,
       // Keep the removed flag in sync with the status the user picked.
       removed: status === Status.REMOVED,
     };
+
+    // Only written when the client actually sends a valid value, so a caller
+    // that omits the field can't silently demote a MAIN school to OTHERS.
+    if (priority) {
+      schoolData.priority = priority;
+    }
 
     // The new fields are only written when the client actually sends them, so
     // clients that don't know about them yet can't clobber stored values.
@@ -124,6 +120,15 @@ export async function POST(request: Request) {
 
     if (typeof body.duration === "string") {
       schoolData.duration = body.duration;
+    }
+
+    const apply_option = parseEnum(ApplyOption, body.apply_option);
+    if (apply_option) {
+      schoolData.apply_option = apply_option;
+    }
+
+    if (typeof body.apply_option_note === "string") {
+      schoolData.apply_option_note = body.apply_option_note.trim();
     }
 
     // Stamp the milestone dates the first time the school reaches each stage.

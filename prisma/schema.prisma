@@ -13,11 +13,8 @@ model Schools {
   id                   String    @id @default(cuid())
   name                 String
   location             String
-  tiers                Tiers
-  category             Category
   status               Status    @default(APPLYING)
-  priority             Priority  @default(LOW)
-  ms_status            MsStatus  @default(RESEARCH_BASED)
+  priority             Priority  @default(OTHERS)
   logo                 String    @default("")
   removal_reason       String?   @default("")
   removed              Boolean   @default(false)
@@ -27,6 +24,12 @@ model Schools {
   non_thesis_option    Boolean   @default(false)
   professional_masters Boolean   @default(false)
   duration             String?   @default("")
+
+  /// Manual list order (drag-to-reorder); 0 for rows that predate the feature.
+  sort_order Int @default(0)
+
+  apply_option      ApplyOption @default(UNDECIDED)
+  apply_option_note String      @default("")
 
   deadline        DateTime?
   application_fee Int?
@@ -75,30 +78,15 @@ enum LetterStatus {
 }
 
 enum Priority {
-  HIGH
-  MEDIUM
-  LOW
+  MAIN
+  OTHERS
 }
 
-enum MsStatus {
-  RESEARCH_BASED
-  PROFESSIONAL_TRACK
-  NO_MASTERS
-}
-
-enum Tiers {
-  SAFETY
-  TARGET
-  REACH
-  NOT_SURE
-}
-
-enum Category {
-  AROUND_ILLINOIS
-  IN_CHICAGO
-  IN_ILLINOIS
-  IN_CALIFORNIA
-  FAR
+enum ApplyOption {
+  NON_THESIS
+  PROFESSIONAL
+  BOTH
+  UNDECIDED
 }
 
 enum Status {

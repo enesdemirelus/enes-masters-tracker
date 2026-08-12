@@ -24,6 +24,7 @@ import {
   secondaryButtonStyle,
   ui,
 } from "./modalTheme";
+import { APPLY_OPTION_OPTIONS, PRIORITY_OPTIONS } from "@/app/theme";
 
 interface AddSchoolDesktopModalProps {
   opened: boolean;
@@ -32,17 +33,7 @@ interface AddSchoolDesktopModalProps {
   isMobile?: boolean;
 }
 
-const PRIORITY_OPTIONS = ["High", "Medium", "Low"];
-const TIER_OPTIONS = ["Safety", "Target", "Reach", "Not Sure"];
-const CATEGORY_OPTIONS = [
-  "Around Illinois",
-  "In Chicago",
-  "In Illinois",
-  "In California",
-  "Far",
-];
 const STATUS_OPTIONS = ["Applying", "Applied", "Rejected", "Accepted"];
-const MS_STATUS_OPTIONS = ["Research Based", "Professional Track", "No Masters"];
 const GRE_OPTIONS = ["Not Required", "Optional", "Required"];
 
 function AddSchoolDesktopModal({
@@ -53,11 +44,10 @@ function AddSchoolDesktopModal({
 }: AddSchoolDesktopModalProps) {
   const [schoolName, setSchoolName] = useState("");
   const [schoolLocation, setSchoolLocation] = useState("");
-  const [schoolPriority, setSchoolPriority] = useState("Low");
-  const [schoolTier, setSchoolTier] = useState("");
-  const [schoolCategory, setSchoolCategory] = useState("");
+  const [schoolPriority, setSchoolPriority] = useState("OTHERS");
   const [schoolStatus, setSchoolStatus] = useState("Applying");
-  const [schoolMsStatus, setSchoolMsStatus] = useState("");
+  const [applyOption, setApplyOption] = useState("UNDECIDED");
+  const [applyOptionNote, setApplyOptionNote] = useState("");
   const [gre, setGre] = useState("Not Required");
   const [recommendationCount, setRecommendationCount] = useState<
     number | string
@@ -70,11 +60,10 @@ function AddSchoolDesktopModal({
   const resetForm = () => {
     setSchoolName("");
     setSchoolLocation("");
-    setSchoolPriority("Low");
-    setSchoolTier("");
-    setSchoolCategory("");
+    setSchoolPriority("OTHERS");
     setSchoolStatus("Applying");
-    setSchoolMsStatus("");
+    setApplyOption("UNDECIDED");
+    setApplyOptionNote("");
     setGre("Not Required");
     setRecommendationCount(3);
     setNonThesisOption(false);
@@ -83,17 +72,10 @@ function AddSchoolDesktopModal({
   };
 
   const handleAddSchool = async () => {
-    if (
-      !schoolName.trim() ||
-      !schoolLocation.trim() ||
-      !schoolTier ||
-      !schoolCategory ||
-      !schoolStatus ||
-      !schoolMsStatus
-    ) {
+    if (!schoolName.trim() || !schoolLocation.trim() || !schoolStatus) {
       notifyError(
         "Missing information",
-        "Name, location, tier, category, status and MS status are all required."
+        "Name, location and status are required."
       );
       return;
     }
@@ -103,11 +85,11 @@ function AddSchoolDesktopModal({
       await axios.post("/api/add-school", {
         name: schoolName.trim(),
         location: schoolLocation.trim(),
+        // Raw enum values; the API also accepts display labels.
         priority: schoolPriority,
-        tiers: schoolTier,
-        category: schoolCategory,
         status: schoolStatus,
-        ms_status: schoolMsStatus,
+        apply_option: applyOption,
+        apply_option_note: applyOptionNote.trim(),
         gre,
         // Omitted when the field is left blank so the schema default (3) wins.
         ...recommendationCountBody(recommendationCount),
@@ -175,27 +157,7 @@ function AddSchoolDesktopModal({
           size="md"
           radius="md"
           value={schoolPriority}
-          onChange={(value) => setSchoolPriority(value ?? "Low")}
-          styles={inputStyles}
-        />
-        <Select
-          label="Tier"
-          placeholder="Select a tier"
-          data={TIER_OPTIONS}
-          size="md"
-          radius="md"
-          value={schoolTier}
-          onChange={(value) => setSchoolTier(value ?? "")}
-          styles={inputStyles}
-        />
-        <Select
-          label="Location category"
-          placeholder="Select a category"
-          data={CATEGORY_OPTIONS}
-          size="md"
-          radius="md"
-          value={schoolCategory}
-          onChange={(value) => setSchoolCategory(value ?? "")}
+          onChange={(value) => setSchoolPriority(value ?? "OTHERS")}
           styles={inputStyles}
         />
         <Select
@@ -209,13 +171,22 @@ function AddSchoolDesktopModal({
           styles={inputStyles}
         />
         <Select
-          label="MS status"
-          placeholder="Select an MS status"
-          data={MS_STATUS_OPTIONS}
+          label="Applying as"
+          placeholder="Select a program option"
+          data={APPLY_OPTION_OPTIONS}
           size="md"
           radius="md"
-          value={schoolMsStatus}
-          onChange={(value) => setSchoolMsStatus(value ?? "")}
+          value={applyOption}
+          onChange={(value) => setApplyOption(value ?? "UNDECIDED")}
+          styles={inputStyles}
+        />
+        <TextInput
+          label="Apply option note"
+          placeholder="Why this option? (shown on hover)"
+          size="md"
+          radius="md"
+          value={applyOptionNote}
+          onChange={(event) => setApplyOptionNote(event.currentTarget.value)}
           styles={inputStyles}
         />
         <Select
@@ -254,6 +225,7 @@ function AddSchoolDesktopModal({
         <Checkbox
           label="Non-thesis option"
           color={ui.ink}
+          iconColor={ui.onInk}
           checked={nonThesisOption}
           onChange={(event) => setNonThesisOption(event.currentTarget.checked)}
           styles={{ label: { color: ui.body } }}
@@ -261,6 +233,7 @@ function AddSchoolDesktopModal({
         <Checkbox
           label="Professional masters"
           color={ui.ink}
+          iconColor={ui.onInk}
           checked={professionalMasters}
           onChange={(event) =>
             setProfessionalMasters(event.currentTarget.checked)

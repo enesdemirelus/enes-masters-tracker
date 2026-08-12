@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Center, Loader, Title } from "@mantine/core";
 import {
   DeadlineChip,
-  GrayBadge,
+  PriorityBadge,
   StatusBadge,
   type SchoolRow,
 } from "../components/school-list";
@@ -164,7 +164,7 @@ export default function DeadlinesPage() {
       <Link href={`/schools/${school.id}`} style={{ ...nameLinkStyle, flex: 1 }}>
         {school.name}
       </Link>
-      <GrayBadge>{toDisplay(school.tiers)}</GrayBadge>
+      <PriorityBadge priority={school.priority} />
       <span style={dateStyle}>{formatDate(school.deadline)}</span>
       <DeadlineChip deadline={school.deadline} status={school.status} />
       <StatusBadge status={school.status} />
@@ -185,7 +185,7 @@ export default function DeadlinesPage() {
 
       {loading ? (
         <Center style={{ minHeight: "40vh" }}>
-          <Loader color="dark" size="sm" />
+          <Loader color={ui.emphasis} size="sm" />
         </Center>
       ) : active.length === 0 ? (
         <div
@@ -221,7 +221,7 @@ export default function DeadlinesPage() {
                 >
                   {school.name}
                 </Link>
-                <GrayBadge>{toDisplay(school.tiers)}</GrayBadge>
+                <PriorityBadge priority={school.priority} />
                 <Link
                   href={`/schools/${school.id}`}
                   style={{ ...dateStyle, color: ui.muted, textDecoration: "none" }}
@@ -241,7 +241,7 @@ export default function DeadlinesPage() {
                 >
                   {school.name}
                 </Link>
-                <GrayBadge>{toDisplay(school.tiers)}</GrayBadge>
+                <PriorityBadge priority={school.priority} />
                 <span style={{ ...dateStyle, color: ui.muted }}>
                   {finishedNote(school)}
                 </span>

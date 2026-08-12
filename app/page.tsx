@@ -304,7 +304,7 @@ export default function DashboardPage() {
 
         {loading ? (
           <Center style={{ minHeight: "40vh" }}>
-            <Loader color="dark" size="sm" />
+            <Loader color={ui.emphasis} size="sm" />
           </Center>
         ) : (
           <>

@@ -16,12 +16,14 @@ import {
   StatusBadge,
 } from "@/app/components/school-list";
 import {
+  APPLY_OPTION_LABELS,
   cardStyle,
   formatDate,
   getWhichLabel,
   inputStyles,
   notifyError,
   pageTitleStyle,
+  PRIORITY_LABELS,
   toDisplay,
   ui,
   type SchoolFull,
@@ -38,10 +40,10 @@ interface CompareSchool
     | "id"
     | "name"
     | "location"
-    | "tiers"
-    | "category"
     | "status"
     | "priority"
+    | "apply_option"
+    | "apply_option_note"
     | "gre"
     | "recommendation_count"
     | "non_thesis_option"
@@ -103,6 +105,26 @@ function BoolCell({ value }: { value: boolean }) {
   );
 }
 
+/** Which option Enes applies to, with his note printed underneath when set. */
+function ApplyOptionCell({ school }: { school: CompareSchool }) {
+  const note = school.apply_option_note?.trim();
+  const label =
+    APPLY_OPTION_LABELS[school.apply_option] ?? toDisplay(school.apply_option);
+
+  if (!note) {
+    return <span>{label}</span>;
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <span>{label}</span>
+      <span style={{ color: ui.muted, fontSize: 12, lineHeight: 1.35 }}>
+        {note}
+      </span>
+    </div>
+  );
+}
+
 function DeadlineCell({ school }: { school: CompareSchool }) {
   if (!school.deadline) {
     return <Muted>—</Muted>;
@@ -142,13 +164,19 @@ function ChecklistCell({ school }: { school: CompareSchool }) {
 
 const ROWS: Array<{ label: string; render: (school: CompareSchool) => ReactNode }> =
   [
-    { label: "Tier", render: (school) => toDisplay(school.tiers) },
-    { label: "Category", render: (school) => toDisplay(school.category) },
     {
       label: "Status",
       render: (school) => <StatusBadge status={school.status} />,
     },
-    { label: "Priority", render: (school) => toDisplay(school.priority) },
+    {
+      label: "Priority",
+      render: (school) =>
+        PRIORITY_LABELS[school.priority] ?? toDisplay(school.priority),
+    },
+    {
+      label: "Applying as",
+      render: (school) => <ApplyOptionCell school={school} />,
+    },
     { label: "GRE", render: (school) => toDisplay(school.gre) },
     {
       label: "Recommendation letters",
@@ -331,7 +359,7 @@ export default function ComparePage() {
       {/* Table ------------------------------------------------------------ */}
       {loading ? (
         <Center style={{ minHeight: "40vh" }}>
-          <Loader color="dark" size="sm" />
+          <Loader color={ui.emphasis} size="sm" />
         </Center>
       ) : columns.length < 2 ? (
         <div style={{ ...cardPadStyle, color: ui.muted, fontSize: 13 }}>

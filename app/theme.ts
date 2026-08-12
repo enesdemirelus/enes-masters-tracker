@@ -10,28 +10,58 @@ export { DEFAULT_CHECKLIST } from "@/lib/defaults";
 /* -------------------------------------------------------------------------- */
 
 /**
- * Flat, monochrome design tokens — the single source of truth for every hex in
- * the app. No gradients, no glow shadows, no backdrop blur.
+ * Flat, monochrome design tokens — the single source of truth for every colour
+ * in the app. No gradients, no glow shadows, no backdrop blur.
+ *
+ * Each token is a reference to a CSS custom property declared in
+ * `app/globals.css`, which carries a light and a dark value keyed off the
+ * `data-mantine-color-scheme` attribute Mantine puts on `<html>`. That is what
+ * makes the theme switch instantly and without a re-render: the values change
+ * under the same strings, so nothing here (or in any component) is
+ * scheme-aware. Adding a colour means adding a token *and* both palette
+ * entries — never a raw hex in a component.
  */
 export const ui = {
   /** Page background behind the cards. */
-  canvas: "#fafafa",
-  surface: "#ffffff",
-  border: "#e5e5e5",
-  inputBorder: "#d4d4d4",
-  ink: "#171717",
-  inkHover: "#404040",
-  body: "#525252",
-  muted: "#a3a3a3",
-  subtle: "#f5f5f5",
+  canvas: "var(--app-canvas)",
+  surface: "var(--app-surface)",
+  border: "var(--app-border)",
+  inputBorder: "var(--app-input-border)",
+  ink: "var(--app-ink)",
+  /** Hover tone for a surface filled with `ink` (i.e. the primary button). */
+  inkHover: "var(--app-ink-hover)",
+  /** Label/icon colour on top of an `ink` fill. */
+  onInk: "var(--app-on-ink)",
+  body: "var(--app-body)",
+  muted: "var(--app-muted)",
+  subtle: "var(--app-subtle)",
+  /** Recessed groove (SegmentedControl track) — sits *under* the surface. */
+  track: "var(--app-track)",
+  /**
+   * Strongest available fill: the ACCEPTED badge, tooltips, loaders. Inverts
+   * with the scheme, so it stays the loudest thing on the page in both.
+   */
+  emphasis: "var(--app-emphasis)",
+  onEmphasis: "var(--app-on-emphasis)",
   /* Semantic accents — flat fills only. */
-  success: "#16a34a",
-  danger: "#dc2626",
-  dangerHover: "#b91c1c",
-  warning: "#d97706",
+  success: "var(--app-success)",
+  danger: "var(--app-danger)",
+  /**
+   * Destructive *button* fill. Deliberately not `danger`: that one brightens in
+   * dark mode to stay readable as text, which would leave white button labels
+   * short of contrast.
+   */
+  dangerBg: "var(--app-danger-bg)",
+  dangerHover: "var(--app-danger-hover)",
+  onDanger: "var(--app-on-danger)",
+  warning: "var(--app-warning)",
   /** @deprecated alias of `success`, kept for the original modal code. */
-  positive: "#16a34a",
-  shadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
+  positive: "var(--app-success)",
+  shadow: "var(--app-shadow)",
+  /** Scrim behind modals and the mobile drawer. */
+  overlay: "var(--app-overlay)",
+  /** Plate behind a remote logo image; stays light in both schemes. */
+  logoPlate: "var(--app-logo-plate)",
 } as const;
 
 /** Card / panel surface. */
@@ -82,7 +112,16 @@ export const modalStyles = {
   } as CSSProperties,
 };
 
-export const overlayProps = { backgroundOpacity: 0.4, blur: 0 };
+/**
+ * Modal / drawer scrim. The tint is handed over as `--overlay-bg` instead of
+ * Mantine's `backgroundOpacity` so it can carry a different alpha per scheme:
+ * 40% black reads as a clear dimming over the light canvas but barely registers
+ * over the dark one, where the page is already almost that colour.
+ */
+export const overlayProps = {
+  blur: 0,
+  style: { "--overlay-bg": ui.overlay } as CSSProperties,
+};
 
 /**
  * Mantine v8 styles the input through CSS variables declared on the input
@@ -132,7 +171,7 @@ export const primaryButtonStyle = {
   ...buttonBase,
   "--button-bg": ui.ink,
   "--button-hover": ui.inkHover,
-  "--button-color": "#ffffff",
+  "--button-color": ui.onInk,
   "--button-bd": `1px solid ${ui.ink}`,
   "--button-radius": "6px",
 } as CSSProperties;
@@ -148,10 +187,10 @@ export const secondaryButtonStyle = {
 
 export const dangerButtonStyle = {
   ...buttonBase,
-  "--button-bg": ui.danger,
+  "--button-bg": ui.dangerBg,
   "--button-hover": ui.dangerHover,
-  "--button-color": "#ffffff",
-  "--button-bd": `1px solid ${ui.danger}`,
+  "--button-color": ui.onDanger,
+  "--button-bd": `1px solid ${ui.dangerBg}`,
   "--button-radius": "6px",
 } as CSSProperties;
 
@@ -170,11 +209,17 @@ const notificationStyles = {
   description: { color: ui.body } as CSSProperties,
 };
 
+/**
+ * `color` paints the accent bar down the side of the toast. It goes through the
+ * tokens rather than a Mantine palette name (`"dark"` / `"red"`) because those
+ * resolve to near-black and a washed red respectively once the color scheme
+ * flips, either of which disappears against the toast's own dark surface.
+ */
 export function notifySuccess(title: string, message: string) {
   notifications.show({
     title,
     message,
-    color: "dark",
+    color: ui.emphasis,
     autoClose: 4000,
     styles: notificationStyles,
   });
@@ -184,7 +229,7 @@ export function notifyError(title: string, message: string) {
   notifications.show({
     title,
     message,
-    color: "red",
+    color: ui.danger,
     autoClose: 6000,
     styles: notificationStyles,
   });
@@ -392,7 +437,7 @@ export function deadlineInfo(
   return { label: `due in ${days}d`, color: "gray", days, countdown: true };
 }
 
-/** Maps a {@link DeadlineInfo} tone onto a token hex. */
+/** Maps a {@link DeadlineInfo} tone onto a colour token. */
 export function deadlineColorHex(color: DeadlineInfo["color"]): string {
   if (color === "red") return ui.danger;
   if (color === "amber") return ui.warning;
@@ -409,20 +454,49 @@ export type SchoolStatus =
   | "REJECTED"
   | "ACCEPTED"
   | "REMOVED";
-export type Tier = "SAFETY" | "TARGET" | "REACH" | "NOT_SURE";
-export type SchoolCategory =
-  | "AROUND_ILLINOIS"
-  | "IN_CHICAGO"
-  | "IN_ILLINOIS"
-  | "IN_CALIFORNIA"
-  | "FAR";
-export type SchoolPriority = "HIGH" | "MEDIUM" | "LOW";
-export type SchoolMsStatus =
-  | "RESEARCH_BASED"
-  | "PROFESSIONAL_TRACK"
-  | "NO_MASTERS";
+/** MAIN = a flagship choice; OTHERS = everything still on the list. */
+export type SchoolPriority = "MAIN" | "OTHERS";
+/** Which program option Enes will apply to at this school. */
+export type ApplyOption =
+  | "NON_THESIS"
+  | "PROFESSIONAL"
+  | "BOTH"
+  | "UNDECIDED";
 export type GreRequirement = "REQUIRED" | "OPTIONAL" | "NOT_REQUIRED";
 export type LetterStatusValue = "NOT_ASKED" | "ASKED" | "AGREED" | "SUBMITTED";
+
+export const PRIORITIES: SchoolPriority[] = ["MAIN", "OTHERS"];
+
+export const PRIORITY_LABELS: Record<SchoolPriority, string> = {
+  MAIN: "Main",
+  OTHERS: "Others",
+};
+
+/** Dropdown data for every priority picker. */
+export const PRIORITY_OPTIONS = PRIORITIES.map((priority) => ({
+  value: priority,
+  label: PRIORITY_LABELS[priority],
+}));
+
+export const APPLY_OPTIONS: ApplyOption[] = [
+  "NON_THESIS",
+  "PROFESSIONAL",
+  "BOTH",
+  "UNDECIDED",
+];
+
+export const APPLY_OPTION_LABELS: Record<ApplyOption, string> = {
+  NON_THESIS: "Non-Thesis",
+  PROFESSIONAL: "Professional",
+  BOTH: "Both",
+  UNDECIDED: "Undecided",
+};
+
+/** Dropdown data for every apply-option picker. */
+export const APPLY_OPTION_OPTIONS = APPLY_OPTIONS.map((option) => ({
+  value: option,
+  label: APPLY_OPTION_LABELS[option],
+}));
 
 export const LETTER_STATUSES: LetterStatusValue[] = [
   "NOT_ASKED",
@@ -488,11 +562,8 @@ export interface SchoolFull {
   id: string;
   name: string;
   location: string;
-  tiers: Tier;
-  category: SchoolCategory;
   status: SchoolStatus;
   priority: SchoolPriority;
-  ms_status: SchoolMsStatus;
   logo: string;
   removal_reason: string | null;
   removed: boolean;
@@ -502,6 +573,10 @@ export interface SchoolFull {
   non_thesis_option: boolean;
   professional_masters: boolean;
   duration: string | null;
+  /** Manual list position; 1-based, assigned by /api/schools/reorder. */
+  sort_order: number;
+  apply_option: ApplyOption;
+  apply_option_note: string;
   deadline: string | null;
   application_fee: number | null;
   program_url: string | null;

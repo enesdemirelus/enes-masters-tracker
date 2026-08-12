@@ -168,6 +168,7 @@ export default function ChecklistCard({
               size="sm"
               radius={4}
               color={ui.ink}
+              iconColor={ui.onInk}
               checked={item.done}
               onChange={() => toggle(item)}
               aria-label={item.title}

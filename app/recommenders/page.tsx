@@ -446,7 +446,7 @@ export default function RecommendersPage() {
 
         {loading ? (
           <Center style={{ minHeight: "40vh" }}>
-            <Loader color="dark" size="sm" />
+            <Loader color={ui.emphasis} size="sm" />
           </Center>
         ) : recommenders.length === 0 ? (
           <div style={{ ...cardPadStyle, color: ui.muted, fontSize: 13 }}>

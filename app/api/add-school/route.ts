@@ -1,20 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/prisma/client";
 import {
-  Category,
+  ApplyOption,
   GreStatus,
-  MsStatus,
   Priority,
   Status,
-  Tiers,
 } from "@/app/generated/prisma";
 import { DEFAULT_CHECKLIST } from "@/lib/defaults";
 
-// Accepts both raw enum values ("RESEARCH_BASED") and display strings
-// ("Research Based") and normalizes them to the Prisma enum form.
+// Accepts both raw enum values ("NON_THESIS") and display strings
+// ("Non-Thesis") and normalizes them to the Prisma enum form.
 function normalizeEnum(value: unknown): string {
   if (typeof value !== "string") return "";
-  return value.trim().toUpperCase().replace(/\s+/g, "_");
+  return value.trim().toUpperCase().replace(/[\s-]+/g, "_");
 }
 
 function parseEnum<T extends Record<string, string>>(
@@ -47,22 +45,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const tiers = parseEnum(Tiers, data.tiers);
-    if (!tiers) {
-      return NextResponse.json(
-        { error: "A valid tier is required" },
-        { status: 400 }
-      );
-    }
-
-    const category = parseEnum(Category, data.category);
-    if (!category) {
-      return NextResponse.json(
-        { error: "A valid category is required" },
-        { status: 400 }
-      );
-    }
-
     const status = parseEnum(Status, data.status);
     if (!status) {
       return NextResponse.json(
@@ -71,17 +53,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const ms_status = parseEnum(MsStatus, data.ms_status);
-    if (!ms_status) {
-      return NextResponse.json(
-        { error: "A valid MS status is required" },
-        { status: 400 }
-      );
-    }
-
     // Optional fields fall back to the schema defaults.
-    const priority = parseEnum(Priority, data.priority) ?? Priority.LOW;
+    const priority = parseEnum(Priority, data.priority) ?? Priority.OTHERS;
     const gre = parseEnum(GreStatus, data.gre) ?? GreStatus.NOT_REQUIRED;
+    const apply_option =
+      parseEnum(ApplyOption, data.apply_option) ?? ApplyOption.UNDECIDED;
+    const apply_option_note =
+      typeof data.apply_option_note === "string"
+        ? data.apply_option_note.trim()
+        : "";
 
     const recommendation_count =
       typeof data.recommendation_count === "number" &&
@@ -114,20 +94,26 @@ export async function POST(request: Request) {
     const logoData = await logoResponse.json();
     const logo_url = logoData[0]?.logo_url;
 
+    // New schools land at the bottom of the manually ordered list.
+    const last = await prisma.schools.findFirst({
+      orderBy: { sort_order: "desc" },
+      select: { sort_order: true },
+    });
+
     const school = await prisma.schools.create({
       data: {
         name,
         location,
-        tiers,
-        category,
+        sort_order: (last?.sort_order ?? 0) + 1,
         status,
         priority,
-        ms_status,
         gre,
         recommendation_count,
         non_thesis_option,
         professional_masters,
         duration,
+        apply_option,
+        apply_option_note,
         logo: logo_url,
         // Every school starts with the same application checklist.
         checklist: {

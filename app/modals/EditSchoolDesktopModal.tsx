@@ -28,6 +28,7 @@ import {
   toDisplay,
   ui,
 } from "./modalTheme";
+import { APPLY_OPTION_OPTIONS, PRIORITY_OPTIONS } from "@/app/theme";
 
 interface EditSchoolDesktopModalProps {
   opened: boolean;
@@ -37,11 +38,12 @@ interface EditSchoolDesktopModalProps {
   schoolIdProp: string;
   schoolNameProp: string;
   schoolLocationProp: string;
+  /** Raw enum value: "MAIN" | "OTHERS". */
   schoolPriorityProp: string;
-  schoolTierProp: string;
-  schoolCategoryProp: string;
   schoolStatusProp: string;
-  schoolMsStatusProp: string;
+  /** Raw enum value: "NON_THESIS" | "PROFESSIONAL" | "UNDECIDED". */
+  schoolApplyOptionProp: string;
+  schoolApplyOptionNoteProp?: string;
   schoolRemovedProp?: boolean;
   schoolGreProp?: string;
   schoolRecommendationCountProp?: number;
@@ -50,21 +52,11 @@ interface EditSchoolDesktopModalProps {
   schoolDurationProp?: string | null;
 }
 
-const PRIORITY_OPTIONS = ["High", "Medium", "Low"];
-const TIER_OPTIONS = ["Safety", "Target", "Reach", "Not Sure"];
-const CATEGORY_OPTIONS = [
-  "Around Illinois",
-  "In Chicago",
-  "In Illinois",
-  "In California",
-  "Far",
-];
 const STATUS_OPTIONS = ["Applying", "Applied", "Rejected", "Accepted"];
 // "Removed" is only offered for schools that are already removed, so that the
 // value round-trips on save. Active schools must go through the Remove button,
 // which collects the removal reason that /api/remove-school requires.
 const REMOVED_STATUS_OPTIONS = [...STATUS_OPTIONS, "Removed"];
-const MS_STATUS_OPTIONS = ["Research Based", "Professional Track", "No Masters"];
 const GRE_OPTIONS = ["Not Required", "Optional", "Required"];
 
 /** Enum value -> Select option label. Blank values stay blank (placeholder). */
@@ -81,10 +73,9 @@ function EditSchoolDesktopModal({
   schoolNameProp,
   schoolLocationProp,
   schoolPriorityProp,
-  schoolTierProp,
-  schoolCategoryProp,
   schoolStatusProp,
-  schoolMsStatusProp,
+  schoolApplyOptionProp,
+  schoolApplyOptionNoteProp,
   schoolRemovedProp = false,
   schoolGreProp,
   schoolRecommendationCountProp,
@@ -94,16 +85,17 @@ function EditSchoolDesktopModal({
 }: EditSchoolDesktopModalProps) {
   const [schoolName, setSchoolName] = useState(schoolNameProp);
   const [schoolLocation, setSchoolLocation] = useState(schoolLocationProp);
+  // Priority and apply-option Selects are keyed on the raw enum value, so no
+  // label round-trip is needed for them.
   const [schoolPriority, setSchoolPriority] = useState(
-    toOption(schoolPriorityProp)
-  );
-  const [schoolTier, setSchoolTier] = useState(toOption(schoolTierProp));
-  const [schoolCategory, setSchoolCategory] = useState(
-    toOption(schoolCategoryProp)
+    schoolPriorityProp || "OTHERS"
   );
   const [schoolStatus, setSchoolStatus] = useState(toOption(schoolStatusProp));
-  const [schoolMsStatus, setSchoolMsStatus] = useState(
-    toOption(schoolMsStatusProp)
+  const [applyOption, setApplyOption] = useState(
+    schoolApplyOptionProp || "UNDECIDED"
+  );
+  const [applyOptionNote, setApplyOptionNote] = useState(
+    schoolApplyOptionNoteProp ?? ""
   );
   const [gre, setGre] = useState(toOption(schoolGreProp) || "Not Required");
   const [recommendationCount, setRecommendationCount] = useState<
@@ -139,14 +131,16 @@ function EditSchoolDesktopModal({
     { open: openAddBackConfirm, close: closeAddBackConfirm },
   ] = useDisclosure(false);
 
+  // `opened` is a dependency on purpose: reopening the modal on the *same*
+  // school changes none of the props, so without it the fields would still be
+  // holding the edits that were abandoned when the modal was last closed.
   useEffect(() => {
     setSchoolName(schoolNameProp);
     setSchoolLocation(schoolLocationProp);
-    setSchoolPriority(toOption(schoolPriorityProp));
-    setSchoolTier(toOption(schoolTierProp));
-    setSchoolCategory(toOption(schoolCategoryProp));
+    setSchoolPriority(schoolPriorityProp || "OTHERS");
     setSchoolStatus(toOption(schoolStatusProp));
-    setSchoolMsStatus(toOption(schoolMsStatusProp));
+    setApplyOption(schoolApplyOptionProp || "UNDECIDED");
+    setApplyOptionNote(schoolApplyOptionNoteProp ?? "");
     setGre(toOption(schoolGreProp) || "Not Required");
     setRecommendationCount(schoolRecommendationCountProp ?? 3);
     setNonThesisOption(schoolNonThesisOptionProp ?? false);
@@ -154,14 +148,14 @@ function EditSchoolDesktopModal({
     setDuration(schoolDurationProp ?? "");
     setRemovalReason("");
   }, [
+    opened,
     schoolIdProp,
     schoolNameProp,
     schoolLocationProp,
     schoolPriorityProp,
-    schoolTierProp,
-    schoolCategoryProp,
     schoolStatusProp,
-    schoolMsStatusProp,
+    schoolApplyOptionProp,
+    schoolApplyOptionNoteProp,
     schoolGreProp,
     schoolRecommendationCountProp,
     schoolNonThesisOptionProp,
@@ -170,17 +164,10 @@ function EditSchoolDesktopModal({
   ]);
 
   const handleEditSchool = async () => {
-    if (
-      !schoolName.trim() ||
-      !schoolLocation.trim() ||
-      !schoolTier ||
-      !schoolCategory ||
-      !schoolStatus ||
-      !schoolMsStatus
-    ) {
+    if (!schoolName.trim() || !schoolLocation.trim() || !schoolStatus) {
       notifyError(
         "Missing information",
-        "Name, location, tier, category, status and MS status are all required."
+        "Name, location and status are required."
       );
       return;
     }
@@ -191,11 +178,11 @@ function EditSchoolDesktopModal({
         id: schoolIdProp,
         name: schoolName.trim(),
         location: schoolLocation.trim(),
+        // Raw enum values; the API also accepts display labels.
         priority: schoolPriority,
-        tiers: schoolTier,
-        category: schoolCategory,
         status: schoolStatus,
-        ms_status: schoolMsStatus,
+        apply_option: applyOption,
+        apply_option_note: applyOptionNote.trim(),
         gre,
         // Omitted when the field is left blank: the edit API only writes the
         // fields it receives, so the stored value stays untouched.
@@ -343,27 +330,7 @@ function EditSchoolDesktopModal({
             size="md"
             radius="md"
             value={schoolPriority}
-            onChange={(value) => setSchoolPriority(value ?? "Low")}
-            styles={inputStyles}
-          />
-          <Select
-            label="Tier"
-            placeholder="Select a tier"
-            data={TIER_OPTIONS}
-            size="md"
-            radius="md"
-            value={schoolTier}
-            onChange={(value) => setSchoolTier(value ?? "")}
-            styles={inputStyles}
-          />
-          <Select
-            label="Location category"
-            placeholder="Select a category"
-            data={CATEGORY_OPTIONS}
-            size="md"
-            radius="md"
-            value={schoolCategory}
-            onChange={(value) => setSchoolCategory(value ?? "")}
+            onChange={(value) => setSchoolPriority(value ?? "OTHERS")}
             styles={inputStyles}
           />
           <Select
@@ -377,13 +344,22 @@ function EditSchoolDesktopModal({
             styles={inputStyles}
           />
           <Select
-            label="MS status"
-            placeholder="Select an MS status"
-            data={MS_STATUS_OPTIONS}
+            label="Applying as"
+            placeholder="Select a program option"
+            data={APPLY_OPTION_OPTIONS}
             size="md"
             radius="md"
-            value={schoolMsStatus}
-            onChange={(value) => setSchoolMsStatus(value ?? "")}
+            value={applyOption}
+            onChange={(value) => setApplyOption(value ?? "UNDECIDED")}
+            styles={inputStyles}
+          />
+          <TextInput
+            label="Apply option note"
+            placeholder="Why this option? (shown on hover)"
+            size="md"
+            radius="md"
+            value={applyOptionNote}
+            onChange={(event) => setApplyOptionNote(event.currentTarget.value)}
             styles={inputStyles}
           />
           <Select
@@ -422,6 +398,7 @@ function EditSchoolDesktopModal({
           <Checkbox
             label="Non-thesis option"
             color={ui.ink}
+            iconColor={ui.onInk}
             checked={nonThesisOption}
             onChange={(event) => setNonThesisOption(event.currentTarget.checked)}
             styles={{ label: { color: ui.body } }}
@@ -429,6 +406,7 @@ function EditSchoolDesktopModal({
           <Checkbox
             label="Professional masters"
             color={ui.ink}
+            iconColor={ui.onInk}
             checked={professionalMasters}
             onChange={(event) =>
               setProfessionalMasters(event.currentTarget.checked)

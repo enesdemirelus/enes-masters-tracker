@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/prisma/client";
-import { GreStatus } from "@/app/generated/prisma";
+import { ApplyOption, GreStatus, Priority } from "@/app/generated/prisma";
 import { DEFAULT_CHECKLIST } from "@/lib/defaults";
 
 const schoolInclude = {
@@ -17,14 +17,14 @@ function isMissingRecord(error: unknown): boolean {
   );
 }
 
-// Accepts both raw enum values ("NOT_REQUIRED") and display strings
-// ("Not Required") and normalizes them to the Prisma enum form.
+// Accepts both raw enum values ("NON_THESIS") and display strings
+// ("Non-Thesis", "Not Required") and normalizes them to the Prisma enum form.
 function parseEnum<T extends Record<string, string>>(
   enumObject: T,
   value: unknown
 ): T[keyof T] | null {
   if (typeof value !== "string") return null;
-  const normalized = value.trim().toUpperCase().replace(/\s+/g, "_");
+  const normalized = value.trim().toUpperCase().replace(/[\s-]+/g, "_");
   const allowed = Object.values(enumObject) as string[];
   return allowed.includes(normalized) ? (normalized as T[keyof T]) : null;
 }
@@ -138,6 +138,7 @@ export async function PATCH(
       "portal_url",
       "more_info_notes",
       "duration",
+      "apply_option_note",
     ] as const) {
       if (field in body) {
         const value = body[field];
@@ -161,6 +162,28 @@ export async function PATCH(
         return NextResponse.json({ error: "Invalid GRE value" }, { status: 400 });
       }
       data.gre = gre;
+    }
+
+    if ("priority" in body) {
+      const priority = parseEnum(Priority, body.priority);
+      if (!priority) {
+        return NextResponse.json(
+          { error: "Invalid priority value" },
+          { status: 400 }
+        );
+      }
+      data.priority = priority;
+    }
+
+    if ("apply_option" in body) {
+      const apply_option = parseEnum(ApplyOption, body.apply_option);
+      if (!apply_option) {
+        return NextResponse.json(
+          { error: "Invalid apply option value" },
+          { status: 400 }
+        );
+      }
+      data.apply_option = apply_option;
     }
 
     if ("recommendation_count" in body) {

@@ -126,7 +126,7 @@ export default function SchoolDetailPage() {
   if (loading || isMobile === undefined) {
     return (
       <Center style={{ minHeight: 320 }}>
-        <Loader color="dark" size="sm" />
+        <Loader color={ui.emphasis} size="sm" />
       </Center>
     );
   }
@@ -206,10 +206,9 @@ export default function SchoolDetailPage() {
         schoolNameProp={school.name}
         schoolLocationProp={school.location}
         schoolPriorityProp={school.priority}
-        schoolTierProp={school.tiers}
-        schoolCategoryProp={school.category}
         schoolStatusProp={school.status}
-        schoolMsStatusProp={school.ms_status}
+        schoolApplyOptionProp={school.apply_option}
+        schoolApplyOptionNoteProp={school.apply_option_note}
         schoolRemovedProp={school.removed}
         schoolGreProp={school.gre}
         schoolRecommendationCountProp={school.recommendation_count}

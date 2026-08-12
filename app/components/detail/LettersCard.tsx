@@ -302,7 +302,7 @@ export default function LettersCard({
       {picking ? (
         <div style={{ marginTop: 10 }}>
           {loadingRecommenders ? (
-            <Loader color="dark" size="xs" />
+            <Loader color={ui.emphasis} size="xs" />
           ) : (
             <Group gap={8} wrap="nowrap" align="center">
               {renderPickerBody()}

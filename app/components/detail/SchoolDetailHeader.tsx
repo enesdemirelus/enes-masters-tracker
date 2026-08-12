@@ -4,8 +4,12 @@ import Link from "next/link";
 import { Button, Group, Text } from "@mantine/core";
 import { IconEdit } from "@tabler/icons-react";
 import { SchoolLogo } from "@/app/components/SchoolLogo";
-import { GrayBadge, StatusBadge } from "@/app/components/school-list";
-import { secondaryButtonStyle, toDisplay, ui, type SchoolFull } from "@/app/theme";
+import {
+  ApplyOptionBadge,
+  PriorityBadge,
+  StatusBadge,
+} from "@/app/components/school-list";
+import { secondaryButtonStyle, ui, type SchoolFull } from "@/app/theme";
 
 export default function SchoolDetailHeader({
   school,
@@ -39,10 +43,12 @@ export default function SchoolDetailHeader({
               {school.location}
             </Text>
             <Group gap={6} mt={8}>
-              <GrayBadge>{toDisplay(school.tiers)}</GrayBadge>
-              <GrayBadge>{toDisplay(school.category)}</GrayBadge>
               <StatusBadge status={school.status} />
-              <GrayBadge>{toDisplay(school.priority)} priority</GrayBadge>
+              <PriorityBadge priority={school.priority} />
+              <ApplyOptionBadge
+                option={school.apply_option}
+                note={school.apply_option_note}
+              />
             </Group>
           </div>
         </Group>

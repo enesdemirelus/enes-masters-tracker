@@ -42,8 +42,10 @@ export function SchoolLogo({
     );
   }
 
+  // Remote marks are mostly dark artwork on a transparent background, so the
+  // tile keeps a light plate in both schemes instead of following the surface.
   return (
-    <div style={{ ...shell, background: ui.surface }}>
+    <div style={{ ...shell, background: ui.logoPlate }}>
       <Image
         src={school.logo}
         alt={school.name}
