@@ -1,7 +1,16 @@
 # Masters Tracker
 
-A personal tracker for master's program applications: schools, tiers, deadlines,
-and status, with a desktop and mobile view.
+A personal command center for master's program applications. The dashboard opens
+on what needs attention — upcoming deadlines, letter progress, per-school
+checklist completion, fees and decisions. **Schools** is the full sortable,
+searchable table of programs, and each school gets its own workspace at
+`/schools/<id>` with an editable checklist, recommendation-letter requests, key
+dates (deadline, applied, decision), fee and portal links, and free-form notes.
+**Deadlines** rolls every program up into overdue / next 7 days / later / done,
+**Recommenders** tracks who is writing which letter and how far along it is, and
+**Compare** puts up to four programs side by side. "Export data" in the sidebar
+downloads the whole tracker as JSON. Single user, no auth; desktop sidebar
+collapses to a drawer below 768px.
 
 ## Stack
 

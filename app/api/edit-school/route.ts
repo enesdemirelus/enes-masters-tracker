@@ -62,6 +62,15 @@ export async function POST(request: Request) {
 
     const priority = parseEnum(Priority, body.priority) ?? Priority.LOW;
 
+    const existing = await prisma.schools.findUnique({
+      where: { id },
+      select: { applied_date: true, decision_date: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "School not found" }, { status: 404 });
+    }
+
     const schoolData: {
       name: string;
       location: string;
@@ -76,6 +85,8 @@ export async function POST(request: Request) {
       non_thesis_option?: boolean;
       professional_masters?: boolean;
       duration?: string;
+      applied_date?: Date;
+      decision_date?: Date;
     } = {
       name,
       location,
@@ -113,6 +124,19 @@ export async function POST(request: Request) {
 
     if (typeof body.duration === "string") {
       schoolData.duration = body.duration;
+    }
+
+    // Stamp the milestone dates the first time the school reaches each stage.
+    // Only ever filled in, never overwritten, so a hand-corrected date sticks.
+    const now = new Date();
+    if (status === Status.APPLIED && !existing.applied_date) {
+      schoolData.applied_date = now;
+    }
+    if (
+      (status === Status.ACCEPTED || status === Status.REJECTED) &&
+      !existing.decision_date
+    ) {
+      schoolData.decision_date = now;
     }
 
     const school = await prisma.schools.update({

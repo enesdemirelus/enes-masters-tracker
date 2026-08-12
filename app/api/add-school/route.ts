@@ -8,6 +8,7 @@ import {
   Status,
   Tiers,
 } from "@/app/generated/prisma";
+import { DEFAULT_CHECKLIST } from "@/lib/defaults";
 
 // Accepts both raw enum values ("RESEARCH_BASED") and display strings
 // ("Research Based") and normalizes them to the Prisma enum form.
@@ -128,7 +129,15 @@ export async function POST(request: Request) {
         professional_masters,
         duration,
         logo: logo_url,
+        // Every school starts with the same application checklist.
+        checklist: {
+          create: DEFAULT_CHECKLIST.map((title, index) => ({
+            title,
+            order: index,
+          })),
+        },
       },
+      include: { checklist: { orderBy: { order: "asc" } } },
     });
 
     return NextResponse.json(school);

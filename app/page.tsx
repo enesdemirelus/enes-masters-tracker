@@ -1,435 +1,591 @@
 "use client";
-import {
-  Table,
-  Badge,
-  ActionIcon,
-  Title,
-  Button,
-  TextInput,
-  Center,
-  Loader,
-} from "@mantine/core";
-import { IconEdit, IconInfoCircle, IconSearch } from "@tabler/icons-react";
-import { useState, useEffect, type CSSProperties } from "react";
-import MobileSchoolsView from "./components/MobileSchoolsView";
-import { useIsMobile } from "../lib/use-mobile";
-import AddSchoolDesktopModal from "./modals/AddSchoolDesktopModal";
-import EditSchoolDesktopModal from "./modals/EditSchoolDesktopModal";
+
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import Link from "next/link";
+import { Button, Center, Loader, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import MoreInfoModal from "./modals/MoreInfoModal";
+import { useIsMobile } from "@/lib/use-mobile";
+import AddSchoolDesktopModal from "./modals/AddSchoolDesktopModal";
+import {
+  checklistProgress,
+  DeadlineChip,
+  ProgressMeter,
+} from "./components/school-list";
 import {
   cardStyle,
-  inputStyles,
+  formatDate,
+  LETTER_STATUS_LABELS,
+  letterStatusColor,
+  notifyError,
+  pageTitleStyle,
   primaryButtonStyle,
-  toDisplay,
+  sectionLabelStyle,
   ui,
-} from "./modals/modalTheme";
+  type LetterStatusValue,
+  type RecommenderWithLetters,
+  type SchoolFull,
+} from "./theme";
 
-type BadgeProps = {
-  variant: "filled" | "light" | "outline";
-  color: string;
-  style?: CSSProperties;
+/* -------------------------------------------------------------------------- */
+/* Types                                                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * What `/api/get-school` hands back: every scalar column plus the two thin
+ * relation slices (`done` flags and letter statuses) the rollups need.
+ */
+interface DashboardSchool
+  extends Pick<
+    SchoolFull,
+    | "id"
+    | "name"
+    | "status"
+    | "removed"
+    | "deadline"
+    | "application_fee"
+    | "decision_date"
+  > {
+  checklist: Array<{ done: boolean }>;
+  letters: Array<{ status: LetterStatusValue }>;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Small building blocks                                                      */
+/* -------------------------------------------------------------------------- */
+
+const cardPadStyle: CSSProperties = { ...cardStyle, padding: 20 };
+
+const schoolLinkStyle: CSSProperties = {
+  color: ui.ink,
+  fontSize: 14,
+  fontWeight: 500,
+  textDecoration: "none",
 };
 
-/** Every badge is flat gray except the two allowed status exceptions. */
-function getStatusBadgeProps(status: string): BadgeProps {
-  if (status === "ACCEPTED") {
-    return { variant: "filled", color: "dark" };
-  }
-  if (status === "REJECTED") {
-    return {
-      variant: "outline",
-      color: "red",
-      style: {
-        "--badge-bg": "transparent",
-        "--badge-color": ui.danger,
-        "--badge-bd": `1px solid ${ui.danger}`,
-      } as CSSProperties,
-    };
-  }
-  return { variant: "light", color: "gray" };
+const footerLinkStyle: CSSProperties = {
+  color: ui.body,
+  fontSize: 12,
+  fontWeight: 500,
+  textDecoration: "none",
+};
+
+const emptyTextStyle: CSSProperties = {
+  color: ui.muted,
+  fontSize: 13,
+  padding: "12px 0",
+};
+
+const rowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  padding: "9px 0",
+  borderTop: `1px solid ${ui.border}`,
+};
+
+function SchoolLink({ id, name }: { id: string; name: string }) {
+  return (
+    <Link href={`/schools/${id}`} style={schoolLinkStyle}>
+      {name}
+    </Link>
+  );
 }
 
-/** "Which?" — derived from the two boolean track flags. */
-function getWhichLabel(school: {
-  non_thesis_option?: boolean | null;
-  professional_masters?: boolean | null;
-}): string {
-  const nonThesis = school.non_thesis_option === true;
-  const professional = school.professional_masters === true;
-  if (nonThesis && professional) {
-    return "Both";
-  }
-  if (nonThesis) {
-    return "Non-Thesis";
-  }
-  if (professional) {
-    return "Professional";
-  }
-  return "—";
+function CardTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontSize: 15, fontWeight: 600, color: ui.ink }}>
+      {children}
+    </div>
+  );
 }
 
-export default function Page() {
-  const [elements, setElements] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+function LetterBadge({ status }: { status: LetterStatusValue }) {
+  const color = letterStatusColor(status);
+  return (
+    <span
+      style={{
+        flexShrink: 0,
+        fontSize: 11,
+        fontWeight: 600,
+        color,
+        border: `1px solid ${color}`,
+        borderRadius: 4,
+        padding: "1px 6px",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {LETTER_STATUS_LABELS[status].toLowerCase()}
+    </span>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color?: string;
+}) {
+  return (
+    <div style={{ ...cardStyle, padding: "14px 18px", flex: "1 1 140px" }}>
+      <div style={{ fontSize: 28, fontWeight: 700, color: color ?? ui.ink }}>
+        {value}
+      </div>
+      <div style={{ ...sectionLabelStyle, marginTop: 2 }}>{label}</div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Page                                                                       */
+/* -------------------------------------------------------------------------- */
+
+export default function DashboardPage() {
   const isMobile = useIsMobile();
-  const [opened, { open, close }] = useDisclosure(false);
-  const [editOpened, { open: openEdit, close: closeEdit }] =
-    useDisclosure(false);
-  const [selectedSchool, setSelectedSchool] = useState<any>(null);
-  const [moreInfoOpened, { open: openMoreInfo, close: closeMoreInfo }] =
-    useDisclosure(false);
+  const [schools, setSchools] = useState<DashboardSchool[]>([]);
+  const [recommenders, setRecommenders] = useState<RecommenderWithLetters[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
 
-  const fetchSchools = async () => {
-    try {
-      const response = await fetch("/api/get-school");
-      if (!response.ok) {
-        throw new Error(`Failed to fetch schools: ${response.status}`);
-      }
-      const data = await response.json();
-      if (!Array.isArray(data)) {
-        throw new Error("Unexpected response shape from /api/get-school");
-      }
-      setElements(data);
-    } catch (error) {
-      console.error("Error fetching schools:", error);
-      setElements([]);
+  const load = useCallback(async () => {
+    setLoading(true);
+
+    // Both panels are independent: a failing recommenders call should still
+    // leave the school-driven cards populated.
+    const [schoolResult, recommenderResult] = await Promise.allSettled([
+      fetch("/api/get-school").then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch schools: ${response.status}`);
+        }
+        const data = await response.json();
+        if (!Array.isArray(data)) {
+          throw new Error("Unexpected response shape from /api/get-school");
+        }
+        return data as DashboardSchool[];
+      }),
+      fetch("/api/recommenders").then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch recommenders: ${response.status}`);
+        }
+        const data = await response.json();
+        if (!Array.isArray(data)) {
+          throw new Error("Unexpected response shape from /api/recommenders");
+        }
+        return data as RecommenderWithLetters[];
+      }),
+    ]);
+
+    if (schoolResult.status === "fulfilled") {
+      setSchools(schoolResult.value);
+    } else {
+      console.error("Error fetching schools:", schoolResult.reason);
+      setSchools([]);
+      notifyError("Could not load schools", "The school list is unavailable.");
     }
-  };
 
-  useEffect(() => {
-    fetchSchools();
+    if (recommenderResult.status === "fulfilled") {
+      setRecommenders(recommenderResult.value);
+    } else {
+      console.error("Error fetching recommenders:", recommenderResult.reason);
+      setRecommenders([]);
+      notifyError(
+        "Could not load recommenders",
+        "Letter progress is unavailable."
+      );
+    }
+
+    setLoading(false);
   }, []);
 
-  const filteredElements = elements.filter((element) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      element.name.toLowerCase().includes(query) ||
-      element.location.toLowerCase().includes(query) ||
-      element.tiers.toLowerCase().includes(query) ||
-      element.category.toLowerCase().includes(query) ||
-      element.status.toLowerCase().includes(query) ||
-      element.ms_status.toLowerCase().includes(query) ||
-      element.priority.toLowerCase().includes(query)
-    );
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const active = schools.filter((school) => !school.removed);
+  const countBy = (status: string) =>
+    active.filter((school) => school.status === status).length;
+
+  /* Up next — only schools still being worked on can have an urgent deadline. */
+  const upcoming = active
+    .filter((school) => school.deadline && school.status === "APPLYING")
+    .sort((a, b) => (a.deadline ?? "").localeCompare(b.deadline ?? ""))
+    .slice(0, 6);
+
+  /* Letters — flattened across every recommender. */
+  const letters = recommenders.flatMap((recommender) =>
+    recommender.letters.map((letter) => ({
+      ...letter,
+      recommenderName: recommender.name,
+    }))
+  );
+  const submittedLetters = letters.filter(
+    (letter) => letter.status === "SUBMITTED"
+  ).length;
+  const pendingLetters = letters
+    .filter((letter) => letter.status !== "SUBMITTED")
+    .slice(0, 5);
+
+  /* Application progress — least-finished first, so the work surfaces. */
+  const inProgress = active
+    .filter(
+      (school) => school.status === "APPLYING" || school.status === "APPLIED"
+    )
+    .map((school) => ({ school, ...checklistProgress(school) }))
+    .sort((a, b) => a.ratio - b.ratio);
+  const progressRows = inProgress.slice(0, 10);
+  const hiddenProgress = inProgress.length - progressRows.length;
+
+  /* Fees — "still to pay" approximates as anything not yet submitted. */
+  const feeTotal = active.reduce(
+    (sum, school) => sum + (school.application_fee ?? 0),
+    0
+  );
+  const feeOutstanding = active
+    .filter((school) => school.status === "APPLYING")
+    .reduce((sum, school) => sum + (school.application_fee ?? 0), 0);
+
+  /* Decisions. */
+  const accepted = countBy("ACCEPTED");
+  const rejected = countBy("REJECTED");
+  const latestDecision = active
+    .filter(
+      (school) =>
+        school.decision_date &&
+        (school.status === "ACCEPTED" || school.status === "REJECTED")
+    )
+    .sort((a, b) => (b.decision_date ?? "").localeCompare(a.decision_date ?? ""))[0];
+
+  const today = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
   });
 
-  // Priority order for sorting
-  const priorityOrder = { HIGH: 1, MEDIUM: 2, LOW: 3 };
-
-  // Separate active and removed schools and sort by priority
-  const activeSchools = filteredElements
-    .filter((element) => !element.removed)
-    .sort(
-      (a, b) =>
-        priorityOrder[a.priority as keyof typeof priorityOrder] -
-        priorityOrder[b.priority as keyof typeof priorityOrder]
-    );
-
-  const removedSchools = filteredElements
-    .filter((element) => element.removed)
-    .sort(
-      (a, b) =>
-        priorityOrder[a.priority as keyof typeof priorityOrder] -
-        priorityOrder[b.priority as keyof typeof priorityOrder]
-    );
-
-  // Mobile status is unknown on first render — avoid a desktop-table flash.
-  if (isMobile === undefined) {
-    return (
-      <Center style={{ minHeight: "100vh", background: "#fafafa" }}>
-        <Loader color="dark" size="sm" />
-      </Center>
-    );
-  }
-
-  if (isMobile) {
-    return (
-      <MobileSchoolsView
-        activeSchools={activeSchools}
-        removedSchools={removedSchools}
-        onSchoolAdded={fetchSchools}
-      />
-    );
-  }
-
-  const headerCellStyle: CSSProperties = {
-    textAlign: "center",
-    color: ui.body,
-    fontSize: "0.72rem",
-    fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: "0.04em",
-    padding: "12px 16px",
+  const twoColumnStyle: CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+    gap: 16,
   };
-
-  const createSchoolRow = (element: any, isRemoved: boolean = false) => {
-    const statusBadge = getStatusBadgeProps(element.status);
-    const which = getWhichLabel(element);
-
-    return (
-      <Table.Tr
-        key={element.id}
-        style={{
-          opacity: isRemoved ? 0.6 : 1,
-          backgroundColor: isRemoved ? ui.subtle : undefined,
-        }}
-      >
-        <Table.Td style={{ textAlign: "center" }}>
-          <ActionIcon
-            variant="subtle"
-            size="md"
-            radius={6}
-            style={{ color: ui.body }}
-            onClick={() => {
-              setSelectedSchool(element);
-              openEdit();
-            }}
-          >
-            <IconEdit size={16} />
-          </ActionIcon>
-        </Table.Td>
-        <Table.Td style={{ textAlign: "center" }}>
-          <Badge variant="light" color="gray" size="sm" radius={4}>
-            {toDisplay(element.priority)}
-          </Badge>
-        </Table.Td>
-        <Table.Td style={{ textAlign: "center" }}>
-          <Badge variant="light" color="gray" size="sm" radius={4}>
-            {toDisplay(element.tiers)}
-          </Badge>
-        </Table.Td>
-        <Table.Td style={{ fontWeight: 600, color: isRemoved ? ui.muted : ui.ink }}>
-          {element.name}
-          {isRemoved && element.removal_reason && (
-            <span
-              style={{ fontSize: "0.75rem", color: ui.muted, marginLeft: "8px" }}
-            >
-              ({element.removal_reason})
-            </span>
-          )}
-        </Table.Td>
-        <Table.Td style={{ color: isRemoved ? ui.muted : ui.body }}>
-          {element.location}
-        </Table.Td>
-        <Table.Td style={{ textAlign: "center" }}>
-          <Badge variant="light" color="gray" size="sm" radius={4}>
-            {toDisplay(element.category)}
-          </Badge>
-        </Table.Td>
-        <Table.Td style={{ textAlign: "center" }}>
-          <Badge
-            variant={statusBadge.variant}
-            color={statusBadge.color}
-            style={statusBadge.style}
-            size="sm"
-            radius={4}
-          >
-            {toDisplay(element.status)}
-          </Badge>
-        </Table.Td>
-        <Table.Td style={{ textAlign: "center", color: isRemoved ? ui.muted : ui.body }}>
-          {element.duration || "—"}
-        </Table.Td>
-        <Table.Td style={{ textAlign: "center" }}>
-          {which === "—" ? (
-            <span style={{ color: ui.muted }}>—</span>
-          ) : (
-            <Badge variant="light" color="gray" size="sm" radius={4}>
-              {which}
-            </Badge>
-          )}
-        </Table.Td>
-        <Table.Td style={{ textAlign: "center" }}>
-          <ActionIcon
-            variant="subtle"
-            size="md"
-            radius={6}
-            style={{ color: ui.body }}
-            onClick={() => {
-              setSelectedSchool(element);
-              openMoreInfo();
-            }}
-          >
-            <IconInfoCircle size={16} />
-          </ActionIcon>
-        </Table.Td>
-      </Table.Tr>
-    );
-  };
-
-  const COLUMN_COUNT = 10;
-
-  // Create rows for active and removed schools
-  const activeRows = activeSchools.map((element) =>
-    createSchoolRow(element, false)
-  );
-  const removedRows = removedSchools.map((element) =>
-    createSchoolRow(element, true)
-  );
 
   return (
     <>
-      <MoreInfoModal
-        opened={moreInfoOpened}
-        onClose={closeMoreInfo}
-        school={selectedSchool}
-        onSaved={fetchSchools}
-      />
       <AddSchoolDesktopModal
-        opened={opened}
-        onClose={close}
-        onSchoolAdded={fetchSchools}
+        opened={addOpened}
+        onClose={closeAdd}
+        onSchoolAdded={load}
+        isMobile={isMobile}
       />
-      {selectedSchool && (
-        <EditSchoolDesktopModal
-          opened={editOpened}
-          onClose={closeEdit}
-          onSchoolEdited={fetchSchools}
-          schoolIdProp={selectedSchool.id}
-          schoolNameProp={selectedSchool.name}
-          schoolLocationProp={selectedSchool.location}
-          schoolPriorityProp={selectedSchool.priority}
-          schoolTierProp={selectedSchool.tiers}
-          schoolCategoryProp={selectedSchool.category}
-          schoolStatusProp={selectedSchool.status}
-          schoolMsStatusProp={selectedSchool.ms_status}
-          schoolRemovedProp={selectedSchool.removed}
-          schoolGreProp={selectedSchool.gre}
-          schoolRecommendationCountProp={selectedSchool.recommendation_count}
-          schoolNonThesisOptionProp={selectedSchool.non_thesis_option}
-          schoolProfessionalMastersProp={selectedSchool.professional_masters}
-          schoolDurationProp={selectedSchool.duration}
-        />
-      )}
-      <div
-        style={{
-          background: "#fafafa",
-          minHeight: "100vh",
-          padding: "40px 20px",
-        }}
-      >
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* Header ------------------------------------------------------- */}
         <div
           style={{
-            ...cardStyle,
-            maxWidth: "1400px",
-            margin: "0 auto",
-            padding: "32px",
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 16,
+            flexWrap: "wrap",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "28px",
-              gap: "16px",
-              flexWrap: "wrap",
-            }}
-          >
-            <Title
-              order={1}
-              style={{
-                color: ui.ink,
-                fontSize: "1.75rem",
-                fontWeight: 700,
-              }}
-            >
-              Enes&apos; Master&apos;s Application Tracker
+          <div>
+            <Title order={1} style={pageTitleStyle}>
+              Dashboard
             </Title>
-            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-              <TextInput
-                placeholder="Search schools..."
-                size="md"
-                radius={6}
-                leftSection={<IconSearch size={16} color={ui.muted} />}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ width: "300px" }}
-                styles={inputStyles}
-              />
-              <Button
-                size="md"
-                radius={6}
-                style={primaryButtonStyle}
-                onClick={open}
-              >
-                Add School
-              </Button>
+            <div style={{ color: ui.muted, fontSize: 13, marginTop: 4 }}>
+              {today}
             </div>
           </div>
-          <Table.ScrollContainer minWidth={900}>
-            <Table
-              highlightOnHover
-              highlightOnHoverColor="#fafafa"
-              withRowBorders
-              borderColor="#f0f0f0"
-              verticalSpacing="md"
-              horizontalSpacing="md"
-              style={{ backgroundColor: ui.surface }}
-            >
-              <Table.Thead style={{ backgroundColor: "#fafafa" }}>
-                <Table.Tr>
-                  <Table.Th style={{ ...headerCellStyle, width: "50px" }}>
-                    Edit
-                  </Table.Th>
-                  <Table.Th style={{ ...headerCellStyle, width: "100px" }}>
-                    Priority
-                  </Table.Th>
-                  <Table.Th style={{ ...headerCellStyle, width: "100px" }}>
-                    Tier
-                  </Table.Th>
-                  <Table.Th style={{ ...headerCellStyle, textAlign: "left" }}>
-                    School Name
-                  </Table.Th>
-                  <Table.Th style={{ ...headerCellStyle, textAlign: "left" }}>
-                    Location
-                  </Table.Th>
-                  <Table.Th style={{ ...headerCellStyle, minWidth: "130px" }}>
-                    Category
-                  </Table.Th>
-                  <Table.Th style={{ ...headerCellStyle, minWidth: "110px" }}>
-                    Status
-                  </Table.Th>
-                  <Table.Th style={{ ...headerCellStyle, minWidth: "100px" }}>
-                    Duration
-                  </Table.Th>
-                  <Table.Th style={{ ...headerCellStyle, minWidth: "110px" }}>
-                    Which?
-                  </Table.Th>
-                  <Table.Th style={{ ...headerCellStyle, width: "50px" }}>
-                    Info
-                  </Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {activeRows}
-                {removedRows.length > 0 && (
-                  <Table.Tr>
-                    <Table.Td
-                      colSpan={COLUMN_COUNT}
+          <Button size="sm" radius={6} style={primaryButtonStyle} onClick={openAdd}>
+            Add School
+          </Button>
+        </div>
+
+        {loading ? (
+          <Center style={{ minHeight: "40vh" }}>
+            <Loader color="dark" size="sm" />
+          </Center>
+        ) : (
+          <>
+            {/* Stats ---------------------------------------------------- */}
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <StatCard label="Schools" value={active.length} />
+              <StatCard label="Applying" value={countBy("APPLYING")} />
+              <StatCard label="Applied" value={countBy("APPLIED")} />
+              <StatCard label="Accepted" value={accepted} color={ui.success} />
+              <StatCard label="Rejected" value={rejected} color={ui.danger} />
+            </div>
+
+            {/* Up next + letters ---------------------------------------- */}
+            <div style={twoColumnStyle}>
+              <div style={cardPadStyle}>
+                <CardTitle>Up next</CardTitle>
+                <div style={{ marginTop: 8 }}>
+                  {upcoming.length === 0 ? (
+                    <div style={emptyTextStyle}>No upcoming deadlines</div>
+                  ) : (
+                    upcoming.map((school, index) => (
+                      <div
+                        key={school.id}
+                        style={{
+                          ...rowStyle,
+                          borderTop:
+                            index === 0 ? "none" : `1px solid ${ui.border}`,
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <SchoolLink id={school.id} name={school.name} />
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: ui.body,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {formatDate(school.deadline)}
+                        </div>
+                        <DeadlineChip
+                          deadline={school.deadline}
+                          status={school.status}
+                        />
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div
+                  style={{
+                    marginTop: 12,
+                    paddingTop: 10,
+                    borderTop: `1px solid ${ui.border}`,
+                  }}
+                >
+                  <Link href="/deadlines" style={footerLinkStyle}>
+                    All deadlines →
+                  </Link>
+                </div>
+              </div>
+
+              <div style={cardPadStyle}>
+                <CardTitle>Letters of recommendation</CardTitle>
+                {letters.length === 0 ? (
+                  <>
+                    <div style={emptyTextStyle}>No letter requests yet</div>
+                    <Link href="/recommenders" style={footerLinkStyle}>
+                      Add a recommender →
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <div
                       style={{
-                        backgroundColor: "#fafafa",
-                        borderTop: `1px solid ${ui.border}`,
-                        borderBottom: `1px solid ${ui.border}`,
-                        textAlign: "center",
-                        padding: "10px",
-                        fontWeight: 600,
-                        color: ui.muted,
-                        fontSize: "0.75rem",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
+                        marginTop: 10,
+                        fontSize: 13,
+                        color: ui.body,
+                        fontWeight: 500,
                       }}
                     >
-                      Removed Schools
-                    </Table.Td>
-                  </Table.Tr>
+                      <span style={{ color: ui.ink, fontWeight: 600 }}>
+                        {submittedLetters}
+                      </span>{" "}
+                      of {letters.length} submitted
+                    </div>
+                    <div style={{ marginTop: 8 }}>
+                      <ProgressMeter
+                        ratio={submittedLetters / letters.length}
+                        width="100%"
+                      />
+                    </div>
+                    <div style={{ marginTop: 10 }}>
+                      {pendingLetters.length === 0 ? (
+                        <div style={emptyTextStyle}>
+                          Every letter is submitted
+                        </div>
+                      ) : (
+                        pendingLetters.map((letter) => (
+                          <div key={letter.id} style={rowStyle}>
+                            <div
+                              style={{
+                                flex: 1,
+                                minWidth: 0,
+                                fontSize: 13,
+                                color: ui.body,
+                              }}
+                            >
+                              <span style={{ color: ui.ink, fontWeight: 500 }}>
+                                {letter.recommenderName}
+                              </span>
+                              <span style={{ color: ui.muted }}> → </span>
+                              <SchoolLink
+                                id={letter.school.id}
+                                name={letter.school.name}
+                              />
+                            </div>
+                            <LetterBadge status={letter.status} />
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 12,
+                        paddingTop: 10,
+                        borderTop: `1px solid ${ui.border}`,
+                      }}
+                    >
+                      <Link href="/recommenders" style={footerLinkStyle}>
+                        All recommenders →
+                      </Link>
+                    </div>
+                  </>
                 )}
-                {removedRows}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
-        </div>
+              </div>
+            </div>
+
+            {/* Application progress ------------------------------------- */}
+            <div style={cardPadStyle}>
+              <CardTitle>Application progress</CardTitle>
+              <div style={{ marginTop: 8 }}>
+                {progressRows.length === 0 ? (
+                  <div style={emptyTextStyle}>No applications in progress</div>
+                ) : (
+                  progressRows.map(({ school, done, total, ratio, complete }, index) => {
+                    return (
+                      <div
+                        key={school.id}
+                        style={{
+                          ...rowStyle,
+                          alignItems: "center",
+                          borderTop:
+                            index === 0 ? "none" : `1px solid ${ui.border}`,
+                        }}
+                      >
+                        <div
+                          style={{
+                            flex: isMobile ? "1 1 auto" : "0 0 280px",
+                            minWidth: 0,
+                          }}
+                        >
+                          <SchoolLink id={school.id} name={school.name} />
+                        </div>
+                        {!isMobile && (
+                          <div style={{ flex: 1 }}>
+                            <ProgressMeter
+                              ratio={ratio}
+                              complete={complete}
+                              width="100%"
+                            />
+                          </div>
+                        )}
+                        <div
+                          style={{
+                            flexShrink: 0,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: complete ? ui.success : ui.body,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {done}/{total}
+                          {complete && " ✓"}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              {hiddenProgress > 0 && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    paddingTop: 10,
+                    borderTop: `1px solid ${ui.border}`,
+                  }}
+                >
+                  <Link href="/schools" style={footerLinkStyle}>
+                    +{hiddenProgress} more →
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Fees + decisions ----------------------------------------- */}
+            <div style={twoColumnStyle}>
+              <div style={cardPadStyle}>
+                <div style={sectionLabelStyle}>Fees</div>
+                <div
+                  style={{
+                    fontSize: 22,
+                    fontWeight: 700,
+                    color: ui.ink,
+                    marginTop: 6,
+                  }}
+                >
+                  ${feeTotal.toLocaleString("en-US")}
+                </div>
+                <div style={{ fontSize: 13, color: ui.body, marginTop: 4 }}>
+                  total · ${feeOutstanding.toLocaleString("en-US")} still to pay
+                </div>
+              </div>
+
+              <div style={cardPadStyle}>
+                <div style={sectionLabelStyle}>Decisions</div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 20,
+                    marginTop: 6,
+                    alignItems: "baseline",
+                  }}
+                >
+                  <div>
+                    <span
+                      style={{
+                        fontSize: 22,
+                        fontWeight: 700,
+                        color: ui.success,
+                      }}
+                    >
+                      {accepted}
+                    </span>
+                    <span style={{ fontSize: 13, color: ui.body }}>
+                      {" "}
+                      accepted
+                    </span>
+                  </div>
+                  <div>
+                    <span
+                      style={{ fontSize: 22, fontWeight: 700, color: ui.danger }}
+                    >
+                      {rejected}
+                    </span>
+                    <span style={{ fontSize: 13, color: ui.body }}>
+                      {" "}
+                      rejected
+                    </span>
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, color: ui.body, marginTop: 8 }}>
+                  {latestDecision ? (
+                    <>
+                      Latest:{" "}
+                      <SchoolLink
+                        id={latestDecision.id}
+                        name={latestDecision.name}
+                      />{" "}
+                      <span style={{ color: ui.muted }}>
+                        {formatDate(latestDecision.decision_date)}
+                      </span>
+                    </>
+                  ) : (
+                    <span style={{ color: ui.muted }}>No decisions yet</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </>
   );

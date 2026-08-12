@@ -27,6 +27,51 @@ model Schools {
   non_thesis_option    Boolean   @default(false)
   professional_masters Boolean   @default(false)
   duration             String?   @default("")
+
+  deadline        DateTime?
+  application_fee Int?
+  program_url     String?   @default("")
+  portal_url      String?   @default("")
+  applied_date    DateTime?
+  decision_date   DateTime?
+
+  checklist ChecklistItem[]
+  letters   LetterRequest[]
+}
+
+model ChecklistItem {
+  id        String  @id @default(cuid())
+  school_id String
+  school    Schools @relation(fields: [school_id], references: [id], onDelete: Cascade)
+  title     String
+  done      Boolean @default(false)
+  order     Int     @default(0)
+}
+
+model Recommender {
+  id      String          @id @default(cuid())
+  name    String
+  email   String          @default("")
+  notes   String          @default("")
+  letters LetterRequest[]
+}
+
+model LetterRequest {
+  id             String       @id @default(cuid())
+  school_id      String
+  recommender_id String
+  status         LetterStatus @default(NOT_ASKED)
+  school         Schools      @relation(fields: [school_id], references: [id], onDelete: Cascade)
+  recommender    Recommender  @relation(fields: [recommender_id], references: [id], onDelete: Cascade)
+
+  @@unique([school_id, recommender_id])
+}
+
+enum LetterStatus {
+  NOT_ASKED
+  ASKED
+  AGREED
+  SUBMITTED
 }
 
 enum Priority {

@@ -1,318 +1,208 @@
 "use client";
-import {
-  Badge,
-  ActionIcon,
-  Title,
-  Card,
-  Group,
-  Stack,
-  Text,
-  Button,
-} from "@mantine/core";
-import { IconEdit, IconInfoCircle } from "@tabler/icons-react";
-import { useDisclosure } from "@mantine/hooks";
-import { useState, type CSSProperties } from "react";
-import AddSchoolDesktopModal from "../modals/AddSchoolDesktopModal";
-import EditSchoolDesktopModal from "../modals/EditSchoolDesktopModal";
-import MoreInfoModalMobile from "../modals/MoreInfoModalMobile";
-import { cardStyle, primaryButtonStyle, toDisplay, ui } from "../modals/modalTheme";
 
-interface School {
-  id: string;
-  name: string;
-  location: string;
-  priority: string;
-  tiers: string;
-  category: string;
-  status: string;
-  ms_status: string;
-  logo: string;
-  removed?: boolean;
-  removal_reason?: string;
-  more_info_notes?: string;
-  gre?: string;
-  recommendation_count?: number;
-  non_thesis_option?: boolean;
-  professional_masters?: boolean;
-  duration?: string | null;
-}
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ActionIcon, Group, Stack } from "@mantine/core";
+import { IconEdit } from "@tabler/icons-react";
+import { useDisclosure } from "@mantine/hooks";
+import EditSchoolDesktopModal from "../modals/EditSchoolDesktopModal";
+import {
+  checklistProgress,
+  DeadlineChip,
+  GrayBadge,
+  ProgressMeter,
+  StatusBadge,
+  type SchoolRow,
+} from "./school-list";
+import { cardStyle, formatDate, getWhichLabel, toDisplay, ui } from "../theme";
 
 interface MobileSchoolsViewProps {
-  activeSchools: School[];
-  removedSchools: School[];
-  onSchoolAdded?: () => void;
-}
-
-type StatusBadgeProps = {
-  variant: "filled" | "light" | "outline";
-  color: string;
-  style?: CSSProperties;
-};
-
-/** Every badge is flat gray except the two allowed status exceptions. */
-function getStatusBadgeProps(status: string): StatusBadgeProps {
-  if (status === "ACCEPTED") {
-    return { variant: "filled", color: "dark" };
-  }
-  if (status === "REJECTED") {
-    return {
-      variant: "outline",
-      color: "red",
-      style: {
-        "--badge-bg": "transparent",
-        "--badge-color": ui.danger,
-        "--badge-bd": `1px solid ${ui.danger}`,
-      } as CSSProperties,
-    };
-  }
-  return { variant: "light", color: "gray" };
-}
-
-/** "Which?" — derived from the two boolean track flags, mirrors the desktop table. */
-function getWhichLabel(school: {
-  non_thesis_option?: boolean | null;
-  professional_masters?: boolean | null;
-}): string {
-  const nonThesis = school.non_thesis_option === true;
-  const professional = school.professional_masters === true;
-  if (nonThesis && professional) {
-    return "Both";
-  }
-  if (nonThesis) {
-    return "Non-Thesis";
-  }
-  if (professional) {
-    return "Professional";
-  }
-  return "—";
+  /** Already filtered and sorted by the page — this view only paints. */
+  activeSchools: SchoolRow[];
+  removedSchools: SchoolRow[];
+  onSchoolChanged?: () => void;
+  /** Wording depends on whether the list is empty or merely filtered out. */
+  emptyLabel?: string;
 }
 
 export default function MobileSchoolsView({
   activeSchools,
   removedSchools,
-  onSchoolAdded,
+  onSchoolChanged,
+  emptyLabel = "No schools yet",
 }: MobileSchoolsViewProps) {
-  const [opened, { open, close }] = useDisclosure(false);
+  const router = useRouter();
   const [editOpened, { open: openEdit, close: closeEdit }] =
     useDisclosure(false);
-  const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
-  const [moreInfoOpened, { open: openMoreInfo, close: closeMoreInfo }] =
-    useDisclosure(false);
+  const [editTarget, setEditTarget] = useState<SchoolRow | null>(null);
 
-  const createSchoolCard = (element: School, isRemoved: boolean = false) => {
-    const statusBadge = getStatusBadgeProps(element.status);
-    const which = getWhichLabel(element);
+  const renderCard = (school: SchoolRow, isRemoved: boolean) => {
+    const progress = checklistProgress(school);
+    const which = getWhichLabel(school);
 
     return (
-      <Card
-        key={element.id}
-        padding="lg"
+      <div
+        key={school.id}
+        role="link"
+        tabIndex={0}
+        onClick={() => router.push(`/schools/${school.id}`)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            router.push(`/schools/${school.id}`);
+          }
+        }}
         style={{
           ...cardStyle,
+          padding: 16,
+          cursor: "pointer",
           opacity: isRemoved ? 0.6 : 1,
         }}
       >
-        <Stack gap="sm">
+        <Stack gap={10}>
           <Group justify="space-between" align="flex-start" wrap="nowrap">
             <div style={{ flex: 1, minWidth: 0 }}>
-              <Text
-                fw={700}
-                size="lg"
+              <div
                 style={{
-                  color: isRemoved ? ui.muted : ui.ink,
-                  marginBottom: "2px",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: isRemoved ? ui.body : ui.ink,
                 }}
               >
-                {element.name}
-              </Text>
-              <Text size="sm" c={ui.body}>
-                {element.location}
-              </Text>
-              {isRemoved && element.removal_reason && (
-                <Text size="xs" c={ui.muted} mt={4}>
-                  {element.removal_reason}
-                </Text>
-              )}
+                {school.name}
+              </div>
+              <div style={{ fontSize: 12, color: ui.muted, marginTop: 2 }}>
+                {school.location}
+                {isRemoved && school.removal_reason
+                  ? ` · ${school.removal_reason}`
+                  : ""}
+              </div>
             </div>
-            <Group gap="xs" wrap="nowrap">
-              <ActionIcon
-                variant="subtle"
-                size="lg"
-                radius={6}
-                style={{ color: ui.body }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedSchool(element);
-                  openEdit();
-                }}
-              >
-                <IconEdit size={18} />
-              </ActionIcon>
-              <ActionIcon
-                variant="subtle"
-                size="lg"
-                radius={6}
-                style={{ color: ui.body }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedSchool(element);
-                  openMoreInfo();
-                }}
-              >
-                <IconInfoCircle size={18} />
-              </ActionIcon>
-            </Group>
+            <ActionIcon
+              variant="subtle"
+              size="lg"
+              radius={6}
+              aria-label={`Edit ${school.name}`}
+              style={{ color: ui.body }}
+              onClick={(event) => {
+                event.stopPropagation();
+                setEditTarget(school);
+                openEdit();
+              }}
+            >
+              <IconEdit size={18} />
+            </ActionIcon>
           </Group>
 
-          <Group gap="xs">
-            <Badge variant="light" color="gray" size="sm" radius={4}>
-              {toDisplay(element.priority)}
-            </Badge>
-            <Badge variant="light" color="gray" size="sm" radius={4}>
-              {toDisplay(element.tiers)}
-            </Badge>
-            <Badge variant="light" color="gray" size="sm" radius={4}>
-              {toDisplay(element.category)}
-            </Badge>
-            <Badge
-              variant={statusBadge.variant}
-              color={statusBadge.color}
-              style={statusBadge.style}
-              size="sm"
-              radius={4}
+          <Group gap={6}>
+            <GrayBadge>{toDisplay(school.priority)}</GrayBadge>
+            <GrayBadge>{toDisplay(school.tiers)}</GrayBadge>
+            <GrayBadge>{toDisplay(school.category)}</GrayBadge>
+            <StatusBadge status={school.status} />
+            {school.duration && <GrayBadge>{school.duration}</GrayBadge>}
+            {which !== "—" && <GrayBadge>{which}</GrayBadge>}
+          </Group>
+
+          {school.deadline && (
+            <Group gap={8} wrap="nowrap">
+              <span style={{ fontSize: 12, color: ui.body }}>
+                {formatDate(school.deadline)}
+              </span>
+              <DeadlineChip
+                deadline={school.deadline}
+                status={school.status}
+              />
+            </Group>
+          )}
+
+          <Group gap={10} wrap="nowrap" align="center">
+            <div style={{ flex: 1 }}>
+              <ProgressMeter
+                ratio={progress.ratio}
+                complete={progress.complete}
+                width="100%"
+              />
+            </div>
+            <span
+              style={{
+                flexShrink: 0,
+                fontSize: 12,
+                fontWeight: 600,
+                color: progress.complete ? ui.success : ui.body,
+              }}
             >
-              {toDisplay(element.status)}
-            </Badge>
-            {element.duration && (
-              <Badge variant="light" color="gray" size="sm" radius={4}>
-                {element.duration}
-              </Badge>
-            )}
-            {which !== "—" && (
-              <Badge variant="light" color="gray" size="sm" radius={4}>
-                {which}
-              </Badge>
-            )}
+              {progress.done}/{progress.total}
+            </span>
           </Group>
         </Stack>
-      </Card>
+      </div>
     );
   };
 
   return (
     <>
-      <MoreInfoModalMobile
-        opened={moreInfoOpened}
-        onClose={closeMoreInfo}
-        school={selectedSchool}
-        onSaved={onSchoolAdded}
-      />
-      <AddSchoolDesktopModal
-        opened={opened}
-        onClose={close}
-        onSchoolAdded={onSchoolAdded}
-        isMobile={true}
-      />
-      {selectedSchool && (
+      {editTarget && (
         <EditSchoolDesktopModal
           opened={editOpened}
           onClose={closeEdit}
-          onSchoolEdited={onSchoolAdded}
-          isMobile={true}
-          schoolIdProp={selectedSchool.id}
-          schoolNameProp={selectedSchool.name}
-          schoolLocationProp={selectedSchool.location}
-          schoolPriorityProp={selectedSchool.priority}
-          schoolTierProp={selectedSchool.tiers}
-          schoolCategoryProp={selectedSchool.category}
-          schoolStatusProp={selectedSchool.status}
-          schoolMsStatusProp={selectedSchool.ms_status}
-          schoolRemovedProp={selectedSchool.removed}
-          schoolGreProp={selectedSchool.gre}
-          schoolRecommendationCountProp={selectedSchool.recommendation_count}
-          schoolNonThesisOptionProp={selectedSchool.non_thesis_option}
-          schoolProfessionalMastersProp={selectedSchool.professional_masters}
-          schoolDurationProp={selectedSchool.duration}
+          onSchoolEdited={onSchoolChanged}
+          isMobile
+          schoolIdProp={editTarget.id}
+          schoolNameProp={editTarget.name}
+          schoolLocationProp={editTarget.location}
+          schoolPriorityProp={editTarget.priority}
+          schoolTierProp={editTarget.tiers}
+          schoolCategoryProp={editTarget.category}
+          schoolStatusProp={editTarget.status}
+          schoolMsStatusProp={editTarget.ms_status}
+          schoolRemovedProp={editTarget.removed}
+          schoolGreProp={editTarget.gre}
+          schoolRecommendationCountProp={editTarget.recommendation_count}
+          schoolNonThesisOptionProp={editTarget.non_thesis_option}
+          schoolProfessionalMastersProp={editTarget.professional_masters}
+          schoolDurationProp={editTarget.duration}
         />
       )}
-      <div
-        style={{
-          background: "#fafafa",
-          minHeight: "100vh",
-          padding: "20px 16px",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: "600px",
-            margin: "0 auto",
-          }}
-        >
+
+      <Stack gap={12}>
+        {activeSchools.map((school) => renderCard(school, false))}
+
+        {activeSchools.length === 0 && removedSchools.length === 0 && (
           <div
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "20px",
-              gap: "12px",
+              ...cardStyle,
+              padding: 20,
+              textAlign: "center",
+              color: ui.muted,
+              fontSize: 13,
             }}
           >
-            <Title
-              order={1}
-              style={{
-                color: ui.ink,
-                fontSize: "1.35rem",
-                fontWeight: 700,
-                flex: 1,
-              }}
-            >
-              Enes&apos; Master&apos;s Tracker
-            </Title>
-            <Button
-              size="sm"
-              radius={6}
-              style={{
-                ...primaryButtonStyle,
-                fontSize: "0.8rem",
-                whiteSpace: "nowrap",
-              }}
-              onClick={open}
-            >
-              Add School
-            </Button>
+            {emptyLabel}
           </div>
+        )}
 
-          <Stack gap="md">
-            {/* Active Schools */}
-            {activeSchools.map((element) => createSchoolCard(element, false))}
+        {removedSchools.length > 0 && (
+          <div
+            style={{
+              backgroundColor: ui.canvas,
+              borderTop: `1px solid ${ui.border}`,
+              borderBottom: `1px solid ${ui.border}`,
+              textAlign: "center",
+              padding: "10px 12px",
+              fontWeight: 600,
+              color: ui.muted,
+              fontSize: "0.75rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              borderRadius: 6,
+              marginTop: 4,
+            }}
+          >
+            Removed Schools
+          </div>
+        )}
 
-            {/* Separator for Removed Schools */}
-            {removedSchools.length > 0 && (
-              <div
-                style={{
-                  backgroundColor: "#fafafa",
-                  borderTop: `1px solid ${ui.border}`,
-                  borderBottom: `1px solid ${ui.border}`,
-                  textAlign: "center",
-                  padding: "10px 12px",
-                  fontWeight: 600,
-                  color: ui.muted,
-                  fontSize: "0.75rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                  borderRadius: 6,
-                  margin: "8px 0",
-                }}
-              >
-                Removed Schools
-              </div>
-            )}
-
-            {/* Removed Schools */}
-            {removedSchools.map((element) => createSchoolCard(element, true))}
-          </Stack>
-        </div>
-      </div>
+        {removedSchools.map((school) => renderCard(school, true))}
+      </Stack>
     </>
   );
 }
